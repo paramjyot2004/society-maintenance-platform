@@ -1,0 +1,161 @@
+// Prisma schema for Oakwood Residency Society Management System
+// Datasource: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  RESIDENT
+  ADMIN
+}
+
+enum ComplaintCategory {
+  PLUMBING
+  ELECTRICAL
+  ELEVATOR
+  SECURITY
+  CARPENTRY
+  SANITATION
+  LANDSCAPING
+  CIVIL_WORK
+  OTHER
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum NoticeCategory {
+  GENERAL
+  MAINTENANCE
+  EMERGENCY
+  EVENT
+  RULE
+}
+
+enum NoticePriority {
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model User {
+  id                    String                   @id @default(uuid())
+  email                 String                   @unique
+  password              String
+  name                  String
+  role                  Role                     @default(RESIDENT)
+  unitNumber            String?
+  tower                 String?
+  phone                 String?
+  avatar                String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  // Relationships
+  complaints            Complaint[]              @relation("UserComplaints")
+  statusHistoryActions  ComplaintStatusHistory[] @relation("ActorHistory")
+  noticesAuthored       Notice[]                 @relation("UserNotices")
+
+  @@map("users")
+}
+
+model Complaint {
+  id                   String                   @id @default(uuid())
+  ticketNumber         String                   @unique
+  title                String
+  description          String                   @db.Text
+  category             ComplaintCategory
+  priority             ComplaintPriority        @default(MEDIUM)
+  status               ComplaintStatus          @default(OPEN)
+  unitNumber           String
+  tower                String
+  residentName         String
+  residentContact      String
+  photoUrl             String?                  @db.Text
+  
+  // Complaint belongs to a User
+  userId               String
+  user                 User                     @relation("UserComplaints", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Resolution details
+  resolutionNotes      String?                  @db.Text
+  resolutionPhotoUrl   String?                  @db.Text
+  resolvedAt           DateTime?
+
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  // Status Change Auditing
+  statusHistory        ComplaintStatusHistory[]
+
+  @@map("complaints")
+}
+
+model ComplaintStatusHistory {
+  id             String           @id @default(uuid())
+  complaintId    String
+  complaint      Complaint        @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  
+  previousStatus ComplaintStatus?
+  newStatus      ComplaintStatus
+  
+  // Status actor tracking (actorId is required)
+  actorId        String
+  actor          User             @relation("ActorHistory", fields: [actorId], references: [id], onDelete: Cascade)
+  actorName      String
+  actorRole      String
+  
+  // Note & Timestamp
+  note           String?          @db.Text
+  timestamp      DateTime         @default(now())
+
+  @@map("complaint_status_histories")
+}
+
+model Notice {
+  id             String         @id @default(uuid())
+  title          String
+  content        String         @db.Text
+  category       NoticeCategory @default(GENERAL)
+  priority       NoticePriority @default(NORMAL)
+  targetAudience String         @default("ALL_RESIDENTS")
+  isPinned       Boolean        @default(false)
+  isImportant    Boolean        @default(false)
+  
+  // Author
+  authorId       String?
+  authorUser     User?          @relation("UserNotices", fields: [authorId], references: [id], onDelete: SetNull)
+  author         String
+  authorRole     String         @default("ADMIN")
+
+  date           DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("notices")
+}
+
+model AppSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   @db.Text
+  description String?
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("app_settings")
+}

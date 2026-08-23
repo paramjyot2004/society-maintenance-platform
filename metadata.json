@@ -1,0 +1,6 @@
+{
+  "name": "Society Maintenance Tracker",
+  "description": "A comprehensive community management portal for residents and admins to log, track, assign, and resolve maintenance complaints, manage dues, and broadcast notices.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
