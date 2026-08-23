@@ -110,61 +110,29 @@ Sensitive credentials are never stored directly in the repository.
 
 ---
 
-# 🖥️ Screenshots
-
-> Place your screenshots inside `docs/screenshots/`.
-
-### 🔐 Login
-
-![Oakwood Heights Login](docs/screenshots/login.png)
-
----
+## 🖥️ Screenshots
 
 ### 🏠 Resident Dashboard
+
+The resident dashboard provides an overview of complaints, maintenance information, notices, and important society updates.
 
 ![Resident Dashboard](docs/screenshots/resident-dashboard.png)
 
 ---
 
-### 🎫 Complaints
+### 🎫 Complaint Management
 
-![Resident Complaints](docs/screenshots/complaints.png)
+Residents can view and track their submitted maintenance complaints, including status, priority, category, and complaint details.
+
+![Complaint Management](docs/screenshots/complaints.png)
 
 ---
 
 ### 📢 Society Notices
 
+Residents can access important society announcements, maintenance updates, and community notices from a centralized notice board.
+
 ![Society Notices](docs/screenshots/notices.png)
-
----
-
-### 👷 Facility Staff
-
-![Facility Staff](docs/screenshots/facility-staff.png)
-
----
-
-### 💳 Maintenance Dues
-
-![Maintenance Dues](docs/screenshots/maintenance-dues.png)
-
----
-
-### 🛡️ Admin Dashboard
-
-![Admin Dashboard](docs/screenshots/admin-dashboard.png)
-
----
-
-### 📝 Raise Complaint
-
-![Raise Complaint](docs/screenshots/raise-complaint.png)
-
----
-
-### 🔎 Complaint Details
-
-![Complaint Details](docs/screenshots/complaint-details.png)
 
 ---
 
