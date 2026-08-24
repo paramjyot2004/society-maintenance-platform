@@ -53,7 +53,7 @@ import { getPhotoUploadStatusHandler } from './server/upload';
 // Load environment variables
 dotenv.config();
 
-const app = express();
+export const app = express();
 const PORT = 3000;
 
 // Parsers Middleware
@@ -509,4 +509,6 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
