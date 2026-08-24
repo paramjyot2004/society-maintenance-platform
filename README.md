@@ -4,7 +4,9 @@
 
 ### A full-stack residential society maintenance and facility management system
 
-Residents can report maintenance issues, track complaint progress, read society notices, view maintenance dues, and find facility staff — while administrators manage complaints, notices, priorities, status history, and operational settings.
+Residents can raise maintenance complaints, track their progress, view complaint history, read society notices, check maintenance dues, and browse facility staff.
+
+Administrators can monitor society-wide complaints, manage priorities and statuses, review complaint history, assign facility staff, publish notices, and monitor operational statistics.
 
 **Built with React + TypeScript + Vite + Express + PostgreSQL + Prisma**
 
@@ -17,43 +19,28 @@ Residents can report maintenance issues, track complaint progress, read society 
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
+<br/>
+
+### 🚀 Live Demo
+
+<a href="https://society-maintenance-platform.onrender.com" target="_blank">
+  <img src="https://img.shields.io/badge/🚀%20Open%20Live%20Demo-00A99D?style=for-the-badge" alt="Open Live Demo">
+</a>
+
 </div>
 
 ---
 
-## ✨ Overview
+# ✨ Overview
 
 **Oakwood Heights** is a full-stack society maintenance and facility management platform designed around a realistic residential maintenance workflow.
 
-The application provides separate experiences for residents and society management.
+The platform provides separate role-based experiences for:
 
-### 👤 Resident
+- 👤 Residents
+- 🛡️ Administrators
 
-Residents can:
-
-- Raise maintenance complaints
-- Track complaint progress
-- View complaint history
-- Read society notices
-- Check maintenance dues
-- Browse facility staff
-- View complaint status and priority
-- Access a responsive dashboard
-
-### 🛡️ Administration
-
-Society management can:
-
-- View society-wide complaints
-- Manage complaint priorities
-- Update complaint statuses
-- Track complaint history
-- Publish and manage notices
-- Monitor operational statistics
-- Manage maintenance settings
-- Review facility operations
-
-The project is designed as a **modern SaaS-style dashboard**, focusing on usability, clear information architecture, role-based access and realistic maintenance workflows.
+The application uses a React frontend, Express backend, Prisma ORM, and PostgreSQL database to provide persistent complaint and society-management workflows.
 
 ---
 
@@ -61,34 +48,201 @@ The project is designed as a **modern SaaS-style dashboard**, focusing on usabil
 
 ## 👤 Resident Portal
 
-- 🔐 Resident authentication and registration
+Residents can:
+
+- 🔐 Register and log in securely
 - 🎫 Raise maintenance complaints
-- 📊 Track complaint lifecycle
-- 🔄 Open → In Progress → Resolved workflow
+- 📊 Track complaint progress
+- 🧾 View complaint history
+- 🔄 Track complaint lifecycle
+- 🏷️ View complaint category and priority
 - 🔎 Search and filter complaints
-- 🏷️ Complaint category and priority indicators
-- 📝 Complaint details and status history
-- 📢 Society notices and announcements
-- 📌 Pinned important notices
-- 💳 Maintenance dues and billing
-- 👷 Facility staff directory
-- 📱 Responsive resident interface
+- 📢 Read society notices
+- 📌 View pinned important notices
+- 💳 View maintenance dues
+- 👷 Browse facility staff
+- 📱 Use a responsive resident dashboard
+
+### Complaint Lifecycle
+
+```text
+Complaint Created
+       ↓
+      Open
+       ↓
+   In Progress
+       ↓
+    Resolved
+```
+
+Residents can monitor the status of their complaints through the resident portal.
 
 ---
 
-## 🛡️ Admin Management
+# 🛡️ Admin Portal
 
-- 📊 Administrative dashboard
-- 🎫 Society-wide complaint management
-- 🔍 Complaint search and filtering
-- ⚡ Priority management
-- 🔄 Complaint status management
-- 🧾 Complaint status history
-- 📢 Notice creation and management
+The administration portal provides society-wide management capabilities.
+
+Administrators can:
+
+- 📊 View dashboard statistics
+- 🎫 View all resident complaints
+- 🔎 Search and filter complaints
+- ⚡ Manage complaint priorities
+- 🔄 Update complaint statuses
+- 🧾 View complaint status history
+- 👷 Assign complaints to facility staff
+- 👥 View residents and units
+- 📢 Create and manage society notices
 - 📌 Pin important notices
-- ⚙️ Maintenance configuration
-- 👥 Role-based administration
-- 📈 Operational statistics
+- ⚙️ Manage maintenance settings
+- 📈 Monitor operational statistics
+
+The administrator has a society-wide view of complaints, while residents only see their own complaints.
+
+---
+
+# 🎫 Complaint Management Flow
+
+The complaint system follows a complete resident-to-administrator workflow:
+
+```text
+                    Resident
+                       │
+                       ▼
+               Raise Complaint
+                       │
+                       ▼
+              POST /api/complaints
+                       │
+                       ▼
+                 Express API
+                       │
+                       ▼
+                  Prisma ORM
+                       │
+                       ▼
+                PostgreSQL DB
+                       │
+                       ▼
+              Admin Complaint View
+                       │
+             ┌─────────┼─────────┐
+             ▼         ▼         ▼
+          Review     Assign    Prioritize
+                       │
+                       ▼
+                 Update Status
+                       │
+                       ▼
+             Open → In Progress
+                       │
+                       ▼
+                    Resolved
+                       │
+                       ▼
+             Resident Tracks Update
+```
+
+This ensures that complaints created by residents are persisted in PostgreSQL and are available to administrators through the admin portal.
+
+---
+
+# 🧭 Application Workflow
+
+```text
+                     Login / Registration
+                              │
+                 ┌────────────┴────────────┐
+                 │                         │
+              RESIDENT                   ADMIN
+                 │                         │
+                 ▼                         ▼
+         Resident Portal            Admin Dashboard
+                 │                         │
+       ┌─────────┼─────────┐       ┌───────┼─────────┐
+       │         │         │       │       │         │
+   Complaints  Notices   Dues  Complaints Notices  Settings
+       │
+       ▼
+ Open → In Progress → Resolved
+```
+
+---
+
+# 🖥️ Screenshots
+
+## 🏠 Resident Dashboard
+
+The resident dashboard provides an overview of complaints, maintenance information, notices, and important society updates.
+
+![Resident Dashboard](docs/screenshots/resident-dashboard.png)
+
+---
+
+## 🛡️ Admin Dashboard
+
+The admin dashboard provides society-wide complaint statistics and administrative controls.
+
+![Admin Dashboard](docs/screenshots/admin-dashboard.png)
+
+---
+
+## 🎫 Admin Complaint Management
+
+Administrators can view resident complaints, inspect ticket details, manage priorities, update statuses, and review complaint history.
+
+![Admin Complaint Management](docs/screenshots/admin-complaints.png)
+
+---
+
+## 📢 Society Notices
+
+Residents can access important society announcements, maintenance updates, and community notices from a centralized notice board.
+
+![Society Notices](docs/screenshots/notices.png)
+
+---
+
+# 🏗️ Architecture
+
+```mermaid
+flowchart LR
+
+    A[React + TypeScript + Vite]
+    B[Express API]
+    C[Authentication + RBAC]
+    D[Prisma ORM]
+    E[(PostgreSQL)]
+    F[Email Service]
+    G[File Upload Service]
+
+    A --> B
+    B --> C
+    B --> D
+    D --> E
+    B --> F
+    B --> G
+```
+
+---
+
+# 🧱 Application Layers
+
+| Layer | Technology |
+|---|---|
+| Frontend | React + TypeScript |
+| Build Tool | Vite |
+| Styling | Tailwind CSS |
+| Backend | Express.js |
+| Database | PostgreSQL |
+| ORM | Prisma |
+| Authentication | JWT + HTTP-only Cookies |
+| Password Security | bcryptjs |
+| Email | Resend |
+| Icons | Lucide React |
+| Animation | Motion |
+| Deployment | Render |
 
 ---
 
@@ -104,92 +258,11 @@ The application includes:
 - Protected administrator routes
 - Server-side identity validation
 - Environment-based secrets
-- Protected admin bootstrap functionality
+- Protected administrator functionality
 
 Sensitive credentials are never stored directly in the repository.
 
----
-
-## 🖥️ Screenshots
-
-### 🏠 Resident Dashboard
-
-The resident dashboard provides an overview of complaints, maintenance information, notices, and important society updates.
-
-![Resident Dashboard](docs/screenshots/resident-dashboard.png)
-
----
-
-### 🎫 Complaint Management
-
-Residents can view and track their submitted maintenance complaints, including status, priority, category, and complaint details.
-
-![Complaint Management](docs/screenshots/complaints.png)
-
----
-
-### 📢 Society Notices
-
-Residents can access important society announcements, maintenance updates, and community notices from a centralized notice board.
-
-![Society Notices](docs/screenshots/notices.png)
-
----
-
-# 🧭 Application Workflow
-
-```text
-                    ┌─────────────────┐
-                    │   Login /       │
-                    │  Registration   │
-                    └────────┬────────┘
-                             │
-                 ┌───────────┴───────────┐
-                 │                       │
-            RESIDENT                  ADMIN
-                 │                       │
-        ┌────────▼────────┐     ┌────────▼────────┐
-        │ Resident Portal │     │ Admin Dashboard │
-        └────────┬────────┘     └────────┬────────┘
-                 │                       │
-       ┌─────────┼─────────┐       ┌─────┼──────────┐
-       │         │         │       │     │          │
-   Complaints  Notices    Dues  Complaints Notices Settings
-       │
-       ▼
-   Open → In Progress → Resolved
-```
-
----
-
-# 🏗️ Architecture
-
-```mermaid
-flowchart LR
-    A[React + TypeScript + Vite] --> B[Express API]
-    B --> C[Authentication + RBAC]
-    B --> D[Prisma ORM]
-    D --> E[(PostgreSQL)]
-    B --> F[Email Service]
-    B --> G[File Upload Service]
-```
-
-### Application Layers
-
-| Layer | Technology |
-|---|---|
-| Frontend | React + TypeScript |
-| Build Tool | Vite |
-| Styling | Tailwind CSS |
-| Backend | Express.js |
-| Database | PostgreSQL |
-| ORM | Prisma |
-| Authentication | JWT + HTTP-only Cookies |
-| Password Security | bcryptjs |
-| Email | Resend |
-| Icons | Lucide React |
-| Animation | Motion |
-| Deployment | Node-compatible hosting |
+Environment files are excluded through `.gitignore`.
 
 ---
 
@@ -214,6 +287,8 @@ society-maintenance-platform/
 │   ├── components/
 │   │   ├── AdminComplaintManagement.tsx
 │   │   ├── AdminDashboard.tsx
+│   │   ├── AdminLoginPage.tsx
+│   │   ├── AdminPortalView.tsx
 │   │   ├── AuthModal.tsx
 │   │   ├── CategoryBadge.tsx
 │   │   ├── ComplaintCard.tsx
@@ -243,7 +318,7 @@ society-maintenance-platform/
 │   ├── main.tsx
 │   └── types.ts
 │
-├── server.ts
+├── app.ts
 ├── prisma.config.ts
 ├── package.json
 ├── vite.config.ts
@@ -263,7 +338,7 @@ Make sure you have installed:
 
 - Node.js 18+
 - PostgreSQL
-- npm or Bun
+- npm
 - Git
 
 ---
@@ -279,16 +354,8 @@ cd society-maintenance-platform
 
 ## 2. Install Dependencies
 
-Using npm:
-
 ```bash
 npm install
-```
-
-Or using Bun:
-
-```bash
-bun install
 ```
 
 ---
@@ -296,10 +363,6 @@ bun install
 ## 3. Configure Environment Variables
 
 Create a `.env` file using `.env.example` as a reference.
-
-```bash
-cp .env.example .env
-```
 
 Example:
 
@@ -315,7 +378,7 @@ RESEND_API_KEY="your-resend-api-key"
 RESEND_FROM_EMAIL="Oakwood Heights <notifications@yourdomain.com>"
 ```
 
-Never commit the actual `.env` file.
+> Never commit the actual `.env` file.
 
 ---
 
@@ -327,15 +390,15 @@ npx prisma generate
 
 ---
 
-## 5. Set Up Database
+## 5. Set Up the Database
 
-For development:
+For a development database using Prisma migrations:
 
 ```bash
 npx prisma migrate dev
 ```
 
-For production:
+For a production database with existing migrations:
 
 ```bash
 npx prisma migrate deploy
@@ -343,7 +406,7 @@ npx prisma migrate deploy
 
 ---
 
-## 6. Start Development Server
+## 6. Start the Application
 
 ```bash
 npm run dev
@@ -364,9 +427,9 @@ http://localhost:3000
 | `npm run dev` | Start development server |
 | `npm run build` | Build production application |
 | `npm start` | Start production server |
-| `npm run lint` | Run TypeScript/lint checks |
+| `npm run lint` | Run lint/type checks |
 | `npx prisma generate` | Generate Prisma Client |
-| `npx prisma migrate dev` | Run development migration |
+| `npx prisma migrate dev` | Run development migrations |
 | `npx prisma migrate deploy` | Deploy production migrations |
 
 ---
@@ -425,9 +488,7 @@ DELETE /api/notices/:id
 
 ```text
 GET /api/admin/dashboard/stats
-
 GET /api/admin/settings
-
 PUT /api/admin/settings/overdue-threshold
 ```
 
@@ -443,9 +504,9 @@ GET /api/health
 
 # 🧠 Engineering Highlights
 
-### ♻️ Reusable Component Architecture
+## ♻️ Reusable Component Architecture
 
-The frontend is divided into reusable components for:
+The frontend is organized into reusable components for:
 
 - Complaints
 - Notices
@@ -454,24 +515,29 @@ The frontend is divided into reusable components for:
 - Billing
 - Dashboard statistics
 - Admin management
+- Resident management
 
-### 🔒 Role-Based Access
+---
 
-The platform separates:
+## 🔒 Role-Based Access Control
+
+The platform separates resident and administrator experiences:
 
 ```text
 RESIDENT
    ↓
-Resident Dashboard
+Resident Portal
 
 ADMIN
    ↓
-Admin Dashboard
+Admin Portal
 ```
 
-Administrative actions are protected on the server rather than relying only on frontend visibility.
+Administrative actions are protected on the server and are not dependent only on frontend visibility.
 
-### 🧾 Complaint Lifecycle
+---
+
+## 🧾 Complaint Lifecycle
 
 Each complaint follows a structured lifecycle:
 
@@ -487,15 +553,37 @@ In Progress
 Resolved
 ```
 
-Status history provides an auditable record of changes.
+Complaint status history provides an auditable record of status changes.
 
-### 🔎 Search & Filtering
+---
 
-Residents and administrators can efficiently locate complaints using search, status and category/priority filtering.
+## 👷 Staff Assignment
 
-### 📢 Notice Management
+Administrators can associate complaints with facility staff based on the maintenance category.
 
-Society management can publish notices with categories such as:
+The complaint record supports staff assignment information such as:
+
+- Staff ID
+- Staff name
+- Staff contact
+- Assignment information
+
+---
+
+## 🔎 Search & Filtering
+
+The platform provides complaint search and filtering capabilities based on information such as:
+
+- Complaint status
+- Category
+- Priority
+- Search terms
+
+---
+
+## 📢 Notice Management
+
+Administrators can publish society notices for categories such as:
 
 - Maintenance
 - Emergency
@@ -511,7 +599,7 @@ Important notices can also be pinned.
 
 The application uses **PostgreSQL** with **Prisma ORM**.
 
-The database models the major application entities including:
+Major database entities include:
 
 ```text
 Users
@@ -522,46 +610,62 @@ Notices
 Maintenance Settings
 ```
 
-This allows the application to maintain relationships between residents, complaints, notices and operational data.
+Complaint records contain information such as:
+
+```text
+Ticket Number
+Title
+Description
+Category
+Priority
+Status
+Resident
+Unit
+Tower
+Assigned Staff
+Resolution Information
+Created At
+Updated At
+```
+
+The database allows the platform to maintain relationships between residents, units, complaints, notices, and operational data.
 
 ---
 
 # 🚀 Deployment
 
-## Recommended Deployment
+The application is deployed using **Render**.
 
-For the current Express + Vite architecture, a Node-compatible hosting platform such as **Render** is a straightforward deployment option.
+### Live Application
 
-Recommended architecture:
+**https://society-maintenance-platform.onrender.com**
+
+### Production Architecture
 
 ```text
-                 GitHub
-                    │
-                    ▼
-                 Render
-                    │
-          ┌─────────┴─────────┐
-          │                   │
-       Express             Vite
-       Backend            Frontend
+GitHub
+   │
+   ▼
+Render
+   │
+   ├── Node.js + Express
+   │
+   └── Vite Frontend
           │
           ▼
        Prisma
           │
           ▼
-   PostgreSQL / Neon
+     PostgreSQL
 ```
 
----
-
-## Production Build
+The application is built using:
 
 ```bash
-npm install
 npm run build
 ```
 
-Start the production server:
+and started using:
 
 ```bash
 npm start
@@ -569,9 +673,11 @@ npm start
 
 ---
 
-## Production Environment Variables
+# 🌐 Production Environment Variables
 
-Configure these in your hosting provider:
+Production environment variables should be configured through the hosting provider rather than committed to the repository.
+
+Required variables may include:
 
 ```text
 DATABASE_URL
@@ -581,39 +687,19 @@ RESEND_API_KEY
 RESEND_FROM_EMAIL
 ```
 
-If file/image storage is enabled, configure the required storage credentials as well.
-
----
-
-## PostgreSQL
-
-A managed PostgreSQL provider such as Neon can be used for production.
-
-Set:
-
-```env
-DATABASE_URL="your-production-postgresql-connection-string"
-```
-
-Then run:
-
-```bash
-npx prisma migrate deploy
-```
+If file/image storage is enabled, the required storage credentials should also be configured through the hosting provider.
 
 ---
 
 # 🔒 Security Notes
 
-The following files and credentials should **never** be committed:
+The following files should never be committed:
 
 ```text
 .env
 .env.local
 .env.production
 ```
-
-The repository uses `.gitignore` to exclude environment files.
 
 Only `.env.example` should be committed.
 
@@ -622,15 +708,38 @@ Never expose:
 - Database passwords
 - JWT secrets
 - API keys
-- Admin setup secrets
+- Administrator setup secrets
 - Email service credentials
 - Cloud storage credentials
 
 ---
 
+# ✅ Tested Workflows
+
+The following core workflows have been tested during development:
+
+- ✅ Resident registration/login
+- ✅ Administrator login
+- ✅ Resident complaint creation
+- ✅ Complaint persistence in PostgreSQL
+- ✅ Resident complaint history
+- ✅ Administrator society-wide complaint visibility
+- ✅ Complaint search and filtering
+- ✅ Complaint priority management
+- ✅ Complaint status management
+- ✅ Complaint status history
+- ✅ Resident-to-admin complaint synchronization
+- ✅ Admin dashboard complaint statistics
+- ✅ Society notices
+- ✅ Role-based resident/admin access
+- ✅ Production build
+- ✅ Render deployment
+
+---
+
 # 📈 Future Improvements
 
-The project can be extended with:
+Potential future improvements include:
 
 - 📱 Progressive Web App / dedicated mobile experience
 - 🔔 Push notifications
@@ -659,9 +768,13 @@ Review
    ↓
 Assign
    ↓
+Prioritize
+   ↓
 Work
    ↓
 Resolve
+   ↓
+Track
    ↓
 Audit
 ```
@@ -670,6 +783,7 @@ The project demonstrates practical full-stack engineering concepts including:
 
 - Authentication
 - Authorization
+- Role-based access control
 - REST APIs
 - Database design
 - Prisma ORM
@@ -679,15 +793,16 @@ The project demonstrates practical full-stack engineering concepts including:
 - Responsive UI
 - Search and filtering
 - Complaint lifecycle management
+- Staff assignment
 - Administrative workflows
-- Email notifications
-- Production deployment architecture
+- Notice management
+- Production deployment
 
 ---
 
 # 💼 Portfolio Value
 
-This project demonstrates experience with:
+This project demonstrates experience across:
 
 ```text
 Frontend Development
@@ -702,12 +817,14 @@ REST APIs
         +
 Role-Based Access
         +
+Complaint Management
+        +
 Cloud Deployment
         +
 Product/UI Design
 ```
 
-Rather than being only a visual frontend project, Oakwood Heights is designed as a **functional full-stack product with realistic business workflows**.
+Rather than being only a visual frontend project, Oakwood Heights is designed as a functional full-stack product with realistic business workflows and persistent database-backed operations.
 
 ---
 
