@@ -3,7 +3,7 @@ import {
   X, Droplet, Zap, ArrowUpDown, ShieldAlert, Hammer, Trash2, Trees, Home, HelpCircle,
   UploadCloud, AlertCircle, Loader2, CheckCircle2, Info, Trash, ChevronDown, Camera, Link, RefreshCw
 } from 'lucide-react';
-import { ComplaintCategory, CurrentUser } from '../types';
+import { ComplaintCategory, ComplaintPriority, CurrentUser } from '../types';
 
 interface NewComplaintModalProps {
   currentUser: CurrentUser;
@@ -12,6 +12,8 @@ interface NewComplaintModalProps {
     title: string;
     description: string;
     category: ComplaintCategory;
+    priority?: ComplaintPriority;
+    locationUnit?: string;
     photoUrl?: string;
   }) => Promise<any> | any;
   isSubmitting?: boolean;
@@ -38,6 +40,12 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ComplaintCategory | ''>('');
+  const [priority, setPriority] = useState<ComplaintPriority>('MEDIUM');
+  const [locationUnit, setLocationUnit] = useState(
+    currentUser.unitNumber
+      ? (currentUser.tower ? `${currentUser.unitNumber}, ${currentUser.tower}` : currentUser.unitNumber)
+      : 'A-402, Tower A'
+  );
   const [photoUrl, setPhotoUrl] = useState('');
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -123,6 +131,8 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
         title: title.trim(),
         description: description.trim(),
         category: category as ComplaintCategory,
+        priority,
+        locationUnit: locationUnit.trim(),
         photoUrl: photoUrl.trim() || undefined
       });
       if (res && res.ticketNumber) {
@@ -254,9 +264,14 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
                 <label className="block text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                   Location / Unit *
                 </label>
-                <div className="w-full bg-[#111827]/50 border border-[#1F2937] px-4 py-3 rounded-xl text-slate-500 text-sm font-medium cursor-not-allowed">
-                  {currentUser.unitNumber || 'Assigned Unit'}, {currentUser.tower || 'Block'}
-                </div>
+                <input
+                  type="text"
+                  required
+                  value={locationUnit}
+                  onChange={(e) => setLocationUnit(e.target.value)}
+                  placeholder="e.g. A-402, Tower A"
+                  className="w-full bg-[#111827] border border-[#1F2937] text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/50 placeholder:text-slate-500 transition-colors"
+                />
               </div>
             </div>
 
@@ -266,12 +281,42 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
                 <label className="block text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                   Urgency Level
                 </label>
-                <p className="text-xs text-slate-400">Automated based on SLA constraints.</p>
+                <p className="text-xs text-slate-400">Select urgency level for SLA prioritization.</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-3 md:px-4 py-1.5 rounded-full bg-[#1F2937] text-slate-400 text-xs font-bold">Low</span>
-                <span className="px-3 md:px-4 py-1.5 rounded-full bg-orange-600/20 border border-amber-500/30 text-orange-600 text-xs font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)]">Medium</span>
-                <span className="px-3 md:px-4 py-1.5 rounded-full bg-[#1F2937] text-slate-400 text-xs font-bold">High</span>
+                <button
+                  type="button"
+                  onClick={() => setPriority('LOW')}
+                  className={`px-3 md:px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    priority === 'LOW'
+                      ? 'bg-blue-500/20 border border-blue-500/40 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.15)]'
+                      : 'bg-[#1F2937] text-slate-400 hover:text-slate-200 border border-transparent'
+                  }`}
+                >
+                  Low
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriority('MEDIUM')}
+                  className={`px-3 md:px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    priority === 'MEDIUM'
+                      ? 'bg-orange-600/20 border border-amber-500/30 text-orange-400 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
+                      : 'bg-[#1F2937] text-slate-400 hover:text-slate-200 border border-transparent'
+                  }`}
+                >
+                  Medium
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriority('HIGH')}
+                  className={`px-3 md:px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    priority === 'HIGH'
+                      ? 'bg-rose-500/20 border border-rose-500/40 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.15)]'
+                      : 'bg-[#1F2937] text-slate-400 hover:text-slate-200 border border-transparent'
+                  }`}
+                >
+                  High
+                </button>
               </div>
             </div>
 

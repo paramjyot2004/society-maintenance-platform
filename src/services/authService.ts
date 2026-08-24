@@ -215,3 +215,43 @@ export async function verifyResidentPrivilege(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Update current user profile on server (/api/auth/profile)
+ */
+export async function updateUserProfile(payload: {
+  name?: string;
+  phone?: string;
+  unitNumber?: string;
+  tower?: string;
+}): Promise<{ success: boolean; user?: CurrentUser; error?: string }> {
+  try {
+    const res = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success && data.user) {
+      if (data.token) {
+        setStoredToken(data.token);
+      }
+      const u = data.user;
+      const formattedUser: CurrentUser = {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        unitNumber: u.unitNumber || '',
+        tower: u.tower || '',
+        phone: u.phone || '',
+        avatar: u.avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`
+      };
+      return { success: true, user: formattedUser };
+    }
+    return { success: false, error: data.error || 'Failed to update profile.' };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Network error updating profile.' };
+  }
+}

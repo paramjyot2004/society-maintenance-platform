@@ -95,7 +95,7 @@ export interface InMemoryUser {
 export const inMemoryUsers: Map<string, InMemoryUser> = new Map();
 
 // Initialize in-memory seed users with securely hashed passwords
-async function seedDefaultUsers() {
+export async function seedDefaultUsers() {
   const defaultAdminPassword = await hashPassword('Admin@Oakwood123');
   const defaultResidentPassword = await hashPassword('Resident@Oakwood123');
 

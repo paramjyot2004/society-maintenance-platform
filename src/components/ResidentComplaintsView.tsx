@@ -9,19 +9,23 @@ import {
   CreditCard, 
   Users, 
   HelpCircle, 
-  Settings,
-  ChevronDown,
-  Sun,
-  Moon,
-  Calendar,
-  Clock,
-  CheckCircle2,
-  ListFilter,
-  AlertCircle,
-  LogOut,
-  User
+  Settings, 
+  ChevronDown, 
+  Sun, 
+  Moon, 
+  Calendar, 
+  Clock, 
+  CheckCircle2, 
+  ListFilter, 
+  AlertCircle, 
+  LogOut, 
+  User,
+  Wrench,
+  RotateCcw,
+  Phone
 } from 'lucide-react';
 import { Complaint, CurrentUser, Notice, MaintenanceBill } from '../types';
+import { residentConfirmComplaintOnServer, residentConfirmComplaint } from '../services/complaintService';
 
 interface ResidentComplaintsViewProps {
   currentUser: CurrentUser;
@@ -35,6 +39,7 @@ interface ResidentComplaintsViewProps {
   showToast: (msg: string) => void;
   complaintsUpdatedTrigger?: number;
   onLogout?: () => void;
+  onUpdateComplaints?: (updatedComplaints: Complaint[]) => void;
   activeTab: string;
   children?: React.ReactNode;
 }
@@ -49,6 +54,7 @@ export const ResidentComplaintsView: React.FC<ResidentComplaintsViewProps> = ({
   onNavigateTab,
   showToast,
   onLogout,
+  onUpdateComplaints,
   activeTab,
   children
 }) => {
@@ -60,7 +66,11 @@ export const ResidentComplaintsView: React.FC<ResidentComplaintsViewProps> = ({
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   
   // Logic
-  const myComplaints = allComplaints.filter(c => c.unitNumber === currentUser.unitNumber);
+  const myComplaints = allComplaints.filter(c => 
+    (c.userId && currentUser.id && c.userId === currentUser.id) ||
+    (c.unitNumber && currentUser.unitNumber && c.unitNumber.toLowerCase().trim() === currentUser.unitNumber.toLowerCase().trim()) ||
+    (c.residentName && currentUser.name && c.residentName.toLowerCase().trim() === currentUser.name.toLowerCase().trim())
+  );
   const totalComplaints = myComplaints.length;
   const openComplaints = myComplaints.filter(c => c.status === 'OPEN').length;
   const inProgressComplaints = myComplaints.filter(c => c.status === 'IN_PROGRESS').length;
@@ -102,6 +112,31 @@ export const ResidentComplaintsView: React.FC<ResidentComplaintsViewProps> = ({
   const getCategoryIcon = (category: string) => {
     // simplified category icon mapping
     return <AlertTriangle className="w-4 h-4" />;
+  };
+
+  const handleResidentCardConfirmClose = async (complaintId: string) => {
+    try {
+      const serverRes = await residentConfirmComplaintOnServer(complaintId, 'CONFIRM_CLOSE');
+      if (serverRes.success && serverRes.complaint) {
+        const updated = allComplaints.map(c => c.id === complaintId ? serverRes.complaint! : c);
+        onUpdateComplaints?.(updated);
+        showToast('Resolution confirmed! Ticket closed.');
+      } else {
+        const localRes = residentConfirmComplaint(complaintId, 'CONFIRM_CLOSE', currentUser.name, undefined, allComplaints);
+        if (localRes.success && localRes.complaint) {
+          const updated = allComplaints.map(c => c.id === complaintId ? localRes.complaint! : c);
+          onUpdateComplaints?.(updated);
+          showToast('Resolution confirmed! Ticket closed.');
+        }
+      }
+    } catch {
+      const localRes = residentConfirmComplaint(complaintId, 'CONFIRM_CLOSE', currentUser.name, undefined, allComplaints);
+      if (localRes.success && localRes.complaint) {
+        const updated = allComplaints.map(c => c.id === complaintId ? localRes.complaint! : c);
+        onUpdateComplaints?.(updated);
+        showToast('Resolution confirmed! Ticket closed.');
+      }
+    }
   };
 
   return (
@@ -276,7 +311,14 @@ export const ResidentComplaintsView: React.FC<ResidentComplaintsViewProps> = ({
                   <p className="text-slate-400 text-sm max-w-md">All your society operations are running smoothly. You have no urgent actions required at this time.</p>
                 </div>
                 <div className="md:absolute md:right-8 md:bottom-8 relative z-10 mt-6 md:mt-0">
-                  <button className="w-full md:w-auto bg-[#1F2937] hover:bg-[#374151] border border-[#374151] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onNavigateTab?.('staff');
+                      showToast('Facility Staff roster: Contact Duty Managers for Clubhouse and Amenity reservations.');
+                    }}
+                    className="w-full md:w-auto bg-[#1F2937] hover:bg-[#374151] border border-[#374151] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
                     <Calendar className="w-4 h-4 text-teal-400" />
                     Book Amenities
                   </button>
@@ -386,19 +428,59 @@ export const ResidentComplaintsView: React.FC<ResidentComplaintsViewProps> = ({
                                 {complaint.priority}
                               </span>
                             </div>
-                            <p className="text-sm text-slate-400 truncate mb-3 first-letter:uppercase">{complaint.description}</p>
+                            <p className="text-sm text-slate-400 truncate mb-2 first-letter:uppercase">{complaint.description}</p>
                             
+                            {complaint.assignedStaffName && (
+                              <div className="flex items-center gap-1.5 text-xs text-slate-300 mb-2 font-medium">
+                                <Wrench className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                                <span>Technician: <strong className="text-white">{complaint.assignedStaffName}</strong> {complaint.staffContact && `(${complaint.staffContact})`}</span>
+                              </div>
+                            )}
+
+                            {complaint.status === 'RESOLVED' && (
+                              <div className="my-2.5 p-3 rounded-xl bg-teal-500/10 border border-teal-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                <div className="flex items-center gap-2 text-xs text-teal-300 font-semibold">
+                                  <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+                                  <span>Issue resolved. Please confirm whether fixed:</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleResidentCardConfirmClose(complaint.id);
+                                    }}
+                                    className="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Confirm &amp; Close</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onSelectComplaint(complaint);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#1F2937] hover:bg-rose-900/30 text-rose-300 border border-[#374151] transition-all flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+                                    <span>Reopen</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
                             {complaint.status === 'IN_PROGRESS' && (
                               <div className="mb-3">
                                 <div className="h-1.5 w-full bg-[#1F2937] rounded-full overflow-hidden mb-1.5">
                                   <div className="h-full bg-orange-500 w-1/2"></div>
                                 </div>
-                                <p className="text-[10px] text-slate-400 text-right">Assigned to: {complaint.assignedStaffName || 'Staff'}</p>
+                                <p className="text-[10px] text-slate-400 text-right">In Progress • Assigned to {complaint.assignedStaffName || 'Staff'}</p>
                               </div>
                             )}
 
                             <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] text-slate-400">
-                              <span className="font-mono text-slate-400"># {complaint.id}</span>
+                              <span className="font-mono text-slate-400"># {complaint.ticketNumber || complaint.id}</span>
                               <span className="hidden sm:inline">•</span>
                               <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Reported {new Date(complaint.createdAt).toLocaleDateString()}</span>
                             </div>
@@ -522,31 +604,76 @@ export const ResidentComplaintsView: React.FC<ResidentComplaintsViewProps> = ({
                     filteredComplaints.map(complaint => (
                       <div 
                         key={complaint.id} 
-                        className="bg-[#111827] border border-[#1F2937] hover:border-[#374151] rounded-2xl p-4 sm:p-5 cursor-pointer transition-all hover:shadow-md group flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6"
+                        className="bg-[#111827] border border-[#1F2937] hover:border-teal-500/30 rounded-2xl p-5 cursor-pointer transition-all hover:shadow-md group flex flex-col gap-3"
                         onClick={() => onSelectComplaint(complaint)}
                       >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="text-[10px] font-bold text-slate-400 font-mono tracking-wider">#{complaint.id.split('-')[0]}</span>
-                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded flex items-center gap-1 ${getPriorityColor(complaint.priority)}`}>
-                              {complaint.priority}
-                            </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="text-xs font-bold text-teal-400 font-mono tracking-wider bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 rounded-md">
+                                #{complaint.ticketNumber || complaint.id.split('-')[0]}
+                              </span>
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded flex items-center gap-1 ${getPriorityColor(complaint.priority)}`}>
+                                {complaint.priority}
+                              </span>
+                            </div>
+                            
+                            <h4 className="text-base font-bold text-white mb-1 group-hover:text-teal-400 transition-colors truncate capitalize">{complaint.title}</h4>
+                            <p className="text-sm text-slate-400 truncate first-letter:uppercase">{complaint.description}</p>
+                            
+                            {complaint.assignedStaffName && (
+                              <div className="flex items-center gap-1.5 text-xs text-slate-300 mt-2 font-medium">
+                                <Wrench className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                                <span>Technician: <strong className="text-white">{complaint.assignedStaffName}</strong> {complaint.staffContact && `(${complaint.staffContact})`}</span>
+                              </div>
+                            )}
                           </div>
                           
-                          <h4 className="text-base font-bold text-white mb-1 group-hover:text-teal-400 transition-colors truncate capitalize">{complaint.title}</h4>
-                          <p className="text-sm text-slate-400 truncate first-letter:uppercase">{complaint.description}</p>
+                          <div className="flex flex-row sm:flex-col items-start sm:items-end justify-between sm:justify-center shrink-0 gap-3 border-t sm:border-t-0 border-[#1F2937] pt-3 sm:pt-0">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border ${getStatusColor(complaint.status)}`}>
+                              {complaint.status.replace('_', ' ')}
+                            </span>
+                            
+                            <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {new Date(complaint.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
-                        
-                        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 gap-3 border-t sm:border-t-0 border-[#1F2937] pt-3 sm:pt-0">
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border ${getStatusColor(complaint.status)}`}>
-                            {complaint.status.replace('_', ' ')}
-                          </span>
-                          
-                          <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {new Date(complaint.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
+
+                        {/* Resident Confirmation Callout on Resolved Complaints */}
+                        {complaint.status === 'RESOLVED' && (
+                          <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-1">
+                            <div className="flex items-center gap-2.5 text-xs text-teal-300 font-semibold">
+                              <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+                              <span>Your complaint has been resolved. Please confirm whether the issue has been fixed:</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleResidentCardConfirmClose(complaint.id);
+                                }}
+                                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Confirm &amp; Close Ticket</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectComplaint(complaint);
+                                }}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1F2937] hover:bg-rose-900/30 text-rose-300 border border-[#374151] hover:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+                                <span>Reopen</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}

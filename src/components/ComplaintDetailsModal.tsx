@@ -14,22 +14,36 @@ import {
   Bell,
   Printer,
   MessageSquare,
-  Paperclip
+  Paperclip,
+  RotateCcw,
+  Phone
 } from 'lucide-react';
 import { Complaint, CurrentUser } from '../types';
+import { residentConfirmComplaintOnServer, residentConfirmComplaint } from '../services/complaintService';
 
 interface ComplaintDetailsModalProps {
   complaint: Complaint | null;
   currentUser: CurrentUser;
   onClose: () => void;
   onNavigateToTab?: (tab: string) => void;
+  onUpdateComplaint?: (updatedComplaint: Complaint) => void;
 }
 
 export const ComplaintDetailsModal: React.FC<ComplaintDetailsModalProps> = ({
-  complaint,
+  complaint: initialComplaint,
   currentUser,
-  onClose
+  onClose,
+  onUpdateComplaint
 }) => {
+  const [complaint, setComplaint] = useState<Complaint | null>(initialComplaint);
+  const [isReopenOpen, setIsReopenOpen] = useState<boolean>(false);
+  const [reopenReason, setReopenReason] = useState<string>('');
+  const [isSubmittingAction, setIsSubmittingAction] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    setComplaint(initialComplaint);
+  }, [initialComplaint]);
+
   if (!complaint) return null;
 
   const formattedDate = new Date(complaint.createdAt).toLocaleDateString('en-US', {
@@ -45,29 +59,89 @@ export const ComplaintDetailsModal: React.FC<ComplaintDetailsModalProps> = ({
   const isInProgress = complaint.status === 'IN_PROGRESS';
   const isResolved = complaint.status === 'RESOLVED' || complaint.status === 'CLOSED';
 
+  // Handler: Resident confirm and close ticket
+  const handleConfirmCloseTicket = async () => {
+    setIsSubmittingAction(true);
+    try {
+      const serverRes = await residentConfirmComplaintOnServer(complaint.id, 'CONFIRM_CLOSE');
+      if (serverRes.success && serverRes.complaint) {
+        setComplaint(serverRes.complaint);
+        onUpdateComplaint?.(serverRes.complaint);
+      } else {
+        const localRes = residentConfirmComplaint(complaint.id, 'CONFIRM_CLOSE', currentUser.name, undefined, [complaint]);
+        if (localRes.success && localRes.complaint) {
+          setComplaint(localRes.complaint);
+          onUpdateComplaint?.(localRes.complaint);
+        }
+      }
+    } catch {
+      const localRes = residentConfirmComplaint(complaint.id, 'CONFIRM_CLOSE', currentUser.name, undefined, [complaint]);
+      if (localRes.success && localRes.complaint) {
+        setComplaint(localRes.complaint);
+        onUpdateComplaint?.(localRes.complaint);
+      }
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+
+  // Handler: Resident reopen ticket
+  const handleReopenTicket = async () => {
+    setIsSubmittingAction(true);
+    const reason = reopenReason.trim();
+    try {
+      const serverRes = await residentConfirmComplaintOnServer(complaint.id, 'REOPEN', reason);
+      if (serverRes.success && serverRes.complaint) {
+        setComplaint(serverRes.complaint);
+        onUpdateComplaint?.(serverRes.complaint);
+        setIsReopenOpen(false);
+        setReopenReason('');
+      } else {
+        const localRes = residentConfirmComplaint(complaint.id, 'REOPEN', currentUser.name, reason, [complaint]);
+        if (localRes.success && localRes.complaint) {
+          setComplaint(localRes.complaint);
+          onUpdateComplaint?.(localRes.complaint);
+          setIsReopenOpen(false);
+          setReopenReason('');
+        }
+      }
+    } catch {
+      const localRes = residentConfirmComplaint(complaint.id, 'REOPEN', currentUser.name, reason, [complaint]);
+      if (localRes.success && localRes.complaint) {
+        setComplaint(localRes.complaint);
+        onUpdateComplaint?.(localRes.complaint);
+        setIsReopenOpen(false);
+        setReopenReason('');
+      }
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'HIGH':
       case 'URGENT':
-        return 'text-rose-400 bg-rose-50 border-rose-200';
+        return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
       case 'MEDIUM':
-        return 'text-orange-600 bg-amber-50 border-amber-200';
+        return 'text-orange-400 bg-orange-500/10 border-orange-500/20';
       default:
-        return 'text-white bg-[#111827]0/10 border-slate-500/20';
+        return 'text-slate-400 bg-[#1F2937] border-[#374151]';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'OPEN':
-        return 'text-blue-600 bg-blue-500/10 border-blue-500/20';
+        return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
       case 'IN_PROGRESS':
-        return 'text-orange-600 bg-amber-50 border-amber-200';
+        return 'text-orange-400 bg-orange-500/10 border-orange-500/20';
       case 'RESOLVED':
+        return 'text-teal-400 bg-teal-500/10 border-teal-500/20';
       case 'CLOSED':
-        return 'text-green-600 bg-emerald-50 border-emerald-200';
+        return 'text-green-400 bg-green-500/10 border-green-500/20';
       default:
-        return 'text-slate-400 bg-[#111827]0/10 border-slate-500/20';
+        return 'text-slate-400 bg-[#1F2937] border-[#374151]';
     }
   };
 
@@ -109,16 +183,16 @@ export const ComplaintDetailsModal: React.FC<ComplaintDetailsModalProps> = ({
             </div>
             
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0B1121] border border-[#1F2937] text-white hover:text-white hover:bg-[#1F2937] transition-colors text-sm font-bold shadow-sm">
+              <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0B1121] border border-[#1F2937] text-white hover:text-white hover:bg-[#1F2937] transition-colors text-sm font-bold shadow-sm cursor-pointer">
                 <Printer className="w-4 h-4" />
                 Print
               </button>
               <button 
                 onClick={onClose}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-400 hover:bg-rose-500 hover:text-white transition-colors text-sm font-bold shadow-sm"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0B1121] border border-[#1F2937] text-slate-300 hover:bg-[#1F2937] hover:text-white transition-colors text-sm font-bold shadow-sm cursor-pointer"
               >
                 <X className="w-4 h-4" />
-                Close Ticket
+                Back to Complaints
               </button>
             </div>
           </div>
@@ -128,6 +202,79 @@ export const ComplaintDetailsModal: React.FC<ComplaintDetailsModalProps> = ({
             
             {/* Left Column - Main Details (Span 2) */}
             <div className="xl:col-span-2 space-y-6">
+
+              {/* RESIDENT RESOLUTION CONFIRMATION BANNER (Requirement 4) */}
+              {complaint.status === 'RESOLVED' && (
+                <div className="bg-gradient-to-r from-teal-950/80 via-[#111827] to-emerald-950/80 border-2 border-teal-500/50 rounded-2xl p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex items-start gap-4">
+                    <div className="w-11 h-11 rounded-2xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-base sm:text-lg font-bold text-white">
+                        Your complaint has been resolved
+                      </h3>
+                      <p className="text-sm text-slate-300">
+                        Please confirm whether the issue has been fixed to your satisfaction.
+                      </p>
+                    </div>
+                  </div>
+
+                  {isReopenOpen ? (
+                    <div className="pt-2 space-y-3 bg-[#0B1121] p-4 rounded-xl border border-[#1F2937]">
+                      <label className="block text-xs font-bold text-slate-300">
+                        Please describe why the issue is not fixed:
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={reopenReason}
+                        onChange={(e) => setReopenReason(e.target.value)}
+                        placeholder="e.g., The leak was patched but water is still dripping from the joint..."
+                        className="w-full p-3 rounded-xl border border-[#1F2937] text-xs focus:ring-2 focus:ring-rose-500/50 text-white bg-[#111827]"
+                      />
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setIsReopenOpen(false)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isSubmittingAction}
+                          onClick={handleReopenTicket}
+                          className="px-4 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer"
+                        >
+                          {isSubmittingAction ? 'Reopening...' : 'Submit & Reopen Ticket'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
+                      <button
+                        type="button"
+                        disabled={isSubmittingAction}
+                        onClick={handleConfirmCloseTicket}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Confirm &amp; Close Ticket</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isSubmittingAction}
+                        onClick={() => setIsReopenOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-[#1F2937] hover:bg-rose-900/30 text-rose-300 hover:text-rose-200 border border-[#374151] hover:border-rose-500/40 transition-all cursor-pointer"
+                      >
+                        <RotateCcw className="w-4 h-4 text-rose-400" />
+                        <span>Issue Not Fixed / Reopen</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Complaint Header & Description Card */}
               <div className="bg-[#0B1121] border border-[#1F2937] rounded-2xl p-6 md:p-8">

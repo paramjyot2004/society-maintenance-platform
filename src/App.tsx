@@ -49,15 +49,18 @@ import { UnitsDirectory } from './components/UnitsDirectory';
 import { StaffRoster } from './components/StaffRoster';
 import { AdminComplaintManagement } from './components/AdminComplaintManagement';
 import { AdminDashboard } from './components/AdminDashboard';
+import { AdminPortalView } from './components/AdminPortalView';
 import { ResidentComplaintsView } from './components/ResidentComplaintsView';
 import { AuthModal } from './components/AuthModal';
 import { LoginPage } from './components/LoginPage';
+import { AdminLoginPage } from './components/AdminLoginPage';
 import { 
   fetchCurrentSessionUser, 
   logoutUser, 
   getStoredToken 
 } from './services/authService';
-import { createResidentComplaint } from './services/complaintService';
+import { createResidentComplaint, fetchResidentComplaints } from './services/complaintService';
+import { fetchAdminComplaintsFromServer } from './services/adminComplaintService';
 import { 
   createNotice, 
   updateNotice, 
@@ -74,6 +77,29 @@ import {
 } from './services/emailService';
 
 export default function App() {
+  // Path-based URL routing state (/admin/login, /admin/dashboard, /)
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.pathname || '/';
+    }
+    return '/';
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname || '/');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = (path: string) => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', path);
+      setCurrentPath(path);
+    }
+  };
+
   // Current active user / role
   const [currentRole, setCurrentRole] = useState<UserRole>('RESIDENT');
   const [currentUser, setCurrentUser] = useState<CurrentUser>(CURRENT_USERS.RESIDENT);
@@ -101,6 +127,16 @@ export default function App() {
         setNotices(res.data);
       }
     }).catch(() => {});
+
+    // Fetch staff list from server
+    fetch('/api/staff')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.staff && data.staff.length > 0) {
+          setStaffList(data.staff);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Active view tab
@@ -166,27 +202,52 @@ export default function App() {
     localStorage.setItem('oakwood_bills', JSON.stringify(bills));
   }, [bills]);
 
+  // Fetch complaints from server for authenticated user session
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (currentUser.role === 'ADMIN') {
+        fetchAdminComplaintsFromServer().then(res => {
+          if (res.success && res.data) {
+            setComplaints(res.data);
+          }
+        }).catch(() => {});
+      } else {
+        fetchResidentComplaints().then(res => {
+          if (res.success && res.data) {
+            setComplaints(res.data);
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [isAuthenticated, currentUser.id, currentUser.role, complaintsUpdatedTrigger]);
+
   // Handle role switch
   const handleSwitchRole = (role: UserRole) => {
     setCurrentRole(role);
     setCurrentUser(CURRENT_USERS[role]);
-    if (role === 'ADMIN' && activeTab === 'complaints') {
+    if (role === 'ADMIN') {
       setActiveTab('dashboard');
-    } else if (role === 'RESIDENT' && activeTab === 'dashboard') {
+      navigateTo('/admin/dashboard');
+    } else if (role === 'RESIDENT') {
       setActiveTab('dashboard');
+      navigateTo('/');
     }
     showToast(`Switched active view to ${role} (${CURRENT_USERS[role].name})`);
   };
 
   // Handle successful server authentication
-  const handleAuthSuccess = (verifiedUser: CurrentUser, token: string) => {
+  const handleAuthSuccess = (verifiedUser: CurrentUser, token?: string) => {
     setCurrentUser(verifiedUser);
     setCurrentRole(verifiedUser.role);
     setIsAuthenticated(true);
     if (verifiedUser.role === 'ADMIN') {
       setActiveTab('dashboard');
+      navigateTo('/admin/dashboard');
     } else {
       setActiveTab('dashboard');
+      if (currentPath.startsWith('/admin')) {
+        navigateTo('/');
+      }
     }
     setComplaintsUpdatedTrigger(prev => prev + 1);
   };
@@ -199,6 +260,11 @@ export default function App() {
     setCurrentUser(CURRENT_USERS.RESIDENT);
     showToast('Signed out of session');
     setComplaintsUpdatedTrigger(prev => prev + 1);
+    if (currentPath.startsWith('/admin')) {
+      navigateTo('/admin/login');
+    } else {
+      navigateTo('/');
+    }
   };
 
   // Step 4: Raise new complaint handler with server API integration & initial status history
@@ -206,8 +272,16 @@ export default function App() {
     title: string;
     description: string;
     category: ComplaintCategory;
+    priority?: ComplaintPriority;
+    locationUnit?: string;
     photoUrl?: string;
   }) => {
+    if (!isAuthenticated) {
+      showToast('Please log in with your resident account to submit a complaint.');
+      setIsAuthModalOpen(true);
+      return null;
+    }
+
     setIsSubmittingComplaint(true);
     try {
       // Call server endpoint (POST /api/complaints)
@@ -219,55 +293,18 @@ export default function App() {
       });
 
       if (res.success && res.data) {
-        setComplaints(prev => [res.data!, ...prev]);
+        setComplaints(prev => [res.data!, ...prev.filter(c => c.id !== res.data!.id)]);
         setComplaintsUpdatedTrigger(prev => prev + 1);
-        // setIsNewComplaintOpen(false);
-        showToast(`Complaint ${res.data.ticketNumber} filed successfully! Status: OPEN.`); return res.data;
+        setIsNewComplaintOpen(false);
+        showToast(`Complaint ${res.data.ticketNumber} filed successfully! Status: OPEN.`);
+        return res.data;
       } else {
-        // Fallback in case of network issue
-        const nextTicketNum = `CMP-${Math.floor(1000 + Math.random() * 9000)}`;
-        const newComplaintId = `cmp_${Date.now()}`;
-        const nowIso = new Date().toISOString();
-
-        const initialHistoryEntry: ComplaintStatusHistory = {
-          id: `sh_${Date.now()}_init`,
-          complaintId: newComplaintId,
-          newStatus: 'OPEN',
-          actor: {
-            id: currentUser.id,
-            name: currentUser.name,
-            role: currentUser.role,
-          },
-          timestamp: nowIso,
-          note: 'Complaint registered by resident',
-        };
-
-        const newEntry: Complaint = {
-          id: newComplaintId,
-          ticketNumber: nextTicketNum,
-          title: data.title,
-          description: data.description,
-          category: data.category,
-          priority: 'MEDIUM',
-          status: 'OPEN',
-          unitNumber: currentUser.unitNumber || 'Unit 402',
-          tower: currentUser.tower || 'Tower A',
-          residentName: currentUser.name,
-          residentContact: currentUser.phone,
-          photoUrl: data.photoUrl,
-          createdAt: nowIso,
-          updatedAt: nowIso,
-          statusHistory: [initialHistoryEntry],
-          comments: []
-        };
-
-        setComplaints(prev => [newEntry, ...prev]);
-        setComplaintsUpdatedTrigger(prev => prev + 1);
-        // setIsNewComplaintOpen(false);
-        showToast(`Complaint ${nextTicketNum} registered. Status: OPEN.`); return newEntry;
+        showToast(res.error || 'Failed to submit complaint to server.');
+        return null;
       }
     } catch (err: any) {
-      showToast(`Error creating complaint: ${err.message || 'Please try again.'}`);
+      showToast(`Error creating complaint: ${err?.message || 'Please try again.'}`);
+      return null;
     } finally {
       setIsSubmittingComplaint(false);
     }
@@ -629,7 +666,61 @@ export default function App() {
   const openTicketsCount = relevantComplaintsForRole.filter(c => c.status !== 'RESOLVED' && c.status !== 'CLOSED').length;
   const unreadNoticesCount = notices.filter(n => n.priority === 'HIGH' || n.priority === 'URGENT').length;
 
-  // If user is not signed in, show the full-screen Luxury Login Page matching the reference design
+  // Path-Based View Selection: /admin/login
+  if (currentPath === '/admin/login') {
+    if (isAuthenticated && currentUser.role === 'ADMIN') {
+      // Already authenticated as admin, continue to dashboard
+    } else {
+      return (
+        <>
+          <AdminLoginPage
+            appName="Oakwood Heights"
+            onLoginSuccess={(user, token) => {
+              handleAuthSuccess(user, token);
+              navigateTo('/admin/dashboard');
+              showToast(`Welcome Administrator, ${user.name}!`);
+            }}
+            onNavigateToResidentPortal={() => navigateTo('/')}
+          />
+
+          {toastMessage && (
+            <div className="fixed bottom-6 right-6 z-50 bg-[#1F2937] text-white px-4 py-3 rounded-xl shadow-2xl border border-[#374151] text-xs font-semibold flex items-center gap-2.5 animate-in slide-in-from-bottom-5 duration-200">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{toastMessage}</span>
+            </div>
+          )}
+        </>
+      );
+    }
+  }
+
+  // Path-Based View Selection: /admin/dashboard or /admin/*
+  if (currentPath === '/admin/dashboard' || currentPath.startsWith('/admin')) {
+    if (!isAuthenticated || currentUser.role !== 'ADMIN') {
+      return (
+        <>
+          <AdminLoginPage
+            appName="Oakwood Heights"
+            onLoginSuccess={(user, token) => {
+              handleAuthSuccess(user, token);
+              navigateTo('/admin/dashboard');
+              showToast(`Welcome Administrator, ${user.name}!`);
+            }}
+            onNavigateToResidentPortal={() => navigateTo('/')}
+          />
+
+          {toastMessage && (
+            <div className="fixed bottom-6 right-6 z-50 bg-[#1F2937] text-white px-4 py-3 rounded-xl shadow-2xl border border-[#374151] text-xs font-semibold flex items-center gap-2.5 animate-in slide-in-from-bottom-5 duration-200">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{toastMessage}</span>
+            </div>
+          )}
+        </>
+      );
+    }
+  }
+
+  // If user is not signed in on standard routes, show the Resident Login Page
   if (!isAuthenticated) {
     return (
       <>
@@ -639,7 +730,11 @@ export default function App() {
           onLoginSuccess={(user, token) => {
             handleAuthSuccess(user, token);
             showToast(`Welcome back, ${user.name}!`);
+            if (user.role === 'ADMIN') {
+              navigateTo('/admin/dashboard');
+            }
           }}
+          onNavigateToAdminPortal={() => navigateTo('/admin/login')}
         />
 
         {/* Global Toast Message */}
@@ -653,133 +748,34 @@ export default function App() {
     );
   }
 
-  const isResidentDashboard = currentUser.role === 'RESIDENT';
+  const isAdmin = currentUser.role === 'ADMIN';
 
   return (
     <div className={`min-h-screen bg-[#0B1121] text-slate-200 flex flex-col antialiased transition-colors`}>
       
-      {/* Top Navbar */}
-      {!isResidentDashboard && (
-        <Navbar
+      {isAdmin ? (
+        <AdminPortalView
           currentUser={currentUser}
-          onSwitchRole={handleSwitchRole}
-          onOpenNewComplaint={() => setIsNewComplaintOpen(true)}
+          complaints={complaints}
+          notices={notices}
+          bills={bills}
+          units={units}
+          staffList={staffList}
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          unreadNoticesCount={unreadNoticesCount}
-          openTicketsCount={openTicketsCount}
-          onOpenAuthModal={() => setIsAuthModalOpen(true)}
-          isAuthenticated={isAuthenticated}
+          onNavigateTab={(tab) => setActiveTab(tab)}
+          onSelectComplaint={(c) => setSelectedComplaint(c)}
+          onUpdateComplaints={setComplaints}
+          onAddNotice={handleAddNotice}
+          onUpdateNotice={handleUpdateNotice}
+          onDeleteNotice={handleDeleteNotice}
+          onTogglePinNotice={handleTogglePinNotice}
+          onPayBill={handlePayBill}
+          showToast={showToast}
           onLogout={handleLogout}
+          onUpdateCurrentUser={setCurrentUser}
         />
-      )}
-
-      {/* Main Container */}
-      {!isResidentDashboard ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          
-          {/* Metric statistics overview (Only shown on non-complaint tabs or admin mode to avoid duplication) */}
-          {(currentUser.role === 'ADMIN' || activeTab !== 'complaints') && (
-            <StatsOverview
-              currentUser={currentUser}
-              complaints={complaints}
-              bills={bills}
-              unreadNoticesCount={unreadNoticesCount}
-              onFilterStatus={(status) => {
-                setActiveTab('complaints');
-                setStatusFilter(status);
-              }}
-              onNavigateTab={(tab) => {
-                setActiveTab(tab);
-              }}
-            />
-          )}
-
-          {/* Tab 0: Admin Dashboard */}
-          {activeTab === 'dashboard' && (
-            currentUser.role === 'ADMIN' ? (
-              <AdminDashboard
-                currentUser={currentUser}
-                complaints={complaints}
-                units={units}
-                onSelectComplaint={(c) => setSelectedComplaint(c)}
-                onNavigateToComplaints={(filter) => {
-                  if (filter?.category) setAdminInitialCategory(filter.category);
-                  else setAdminInitialCategory('ALL');
-
-                  if (filter?.status) setAdminInitialStatus(filter.status);
-                  else if (filter?.overdueOnly) setAdminInitialStatus('OVERDUE');
-                  else setAdminInitialStatus('ALL');
-
-                  setActiveTab('complaints');
-                }}
-                onShowToast={showToast}
-              />
-            ) : (
-              <div className="bg-[#111827] p-8 rounded-2xl border border-[#1F2937] text-center">
-                <p className="text-sm font-semibold text-slate-300">Please switch to Administrator role to view the Admin Dashboard.</p>
-              </div>
-            )
-          )}
-
-          {/* Tab 1: Complaints Desk */}
-          {activeTab === 'complaints' && (
-            currentUser.role === 'ADMIN' && (
-              <AdminComplaintManagement
-                currentUser={currentUser}
-                complaints={complaints}
-                units={units}
-                initialCategory={adminInitialCategory}
-                initialStatus={adminInitialStatus}
-                onUpdateComplaints={setComplaints}
-                onSelectComplaint={(c) => setSelectedComplaint(c)}
-                onShowToast={showToast}
-                onNavigateToDashboard={() => setActiveTab('dashboard')}
-              />
-            )
-          )}
-
-          {/* Tab 2: Notices Board */}
-          {activeTab === 'notices' && (
-            <NoticesBoard
-              notices={notices}
-              currentUser={currentUser}
-              onAddNotice={handleAddNotice}
-              onUpdateNotice={handleUpdateNotice}
-              onDeleteNotice={handleDeleteNotice}
-              onTogglePin={handleTogglePinNotice}
-              onShowToast={showToast}
-            />
-          )}
-
-          {/* Tab 3: Dues & Billing */}
-          {activeTab === 'dues' && (
-            <DuesAndBilling
-              bills={bills}
-              currentUser={currentUser}
-              onPayBill={handlePayBill}
-            />
-          )}
-
-          {/* Tab 4: Units & Residents Directory (Admin only) */}
-          {activeTab === 'units' && (
-            <UnitsDirectory
-              units={units}
-              currentUser={currentUser}
-            />
-          )}
-
-          {/* Tab 5: Facility Staff Roster */}
-          {activeTab === 'staff' && (
-            <StaffRoster
-              staffList={staffList}
-              currentUser={currentUser}
-            />
-          )}
-
-        </main>
       ) : (
-                <ResidentComplaintsView
+        <ResidentComplaintsView
           activeTab={activeTab}
           currentUser={currentUser}
           allComplaints={complaints}
@@ -792,6 +788,7 @@ export default function App() {
           showToast={showToast}
           complaintsUpdatedTrigger={complaintsUpdatedTrigger}
           onLogout={handleLogout}
+          onUpdateComplaints={setComplaints}
         >
           {activeTab === 'notices' && (
             <NoticesBoard
@@ -826,6 +823,10 @@ export default function App() {
           complaint={selectedComplaint}
           currentUser={currentUser}
           onClose={() => setSelectedComplaint(null)}
+          onUpdateComplaint={(updated) => {
+            setSelectedComplaint(updated);
+            setComplaints(prev => prev.map(c => c.id === updated.id ? updated : c));
+          }}
         />
       )}
 

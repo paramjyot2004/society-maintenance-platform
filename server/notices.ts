@@ -139,7 +139,7 @@ export async function getNoticesHandler(req: Request, res: Response) {
         const whereClause: any = {};
 
         if (category && category !== 'ALL') {
-          whereClause.category = category as NoticeCategory;
+          whereClause.category = category as NoticeCategoryType;
         }
 
         if (importantOnly === 'true') {
@@ -312,8 +312,8 @@ export async function createNoticeHandler(req: AuthenticatedRequest, res: Respon
           data: {
             title: title.trim(),
             content: content.trim(),
-            category: validCategory as NoticeCategory,
-            priority: validPriority as NoticePriority,
+            category: validCategory as NoticeCategoryType,
+            priority: validPriority as NoticePriorityType,
             targetAudience: audience,
             isPinned: finalPinned,
             isImportant: finalPinned,
@@ -487,8 +487,8 @@ export async function updateNoticeHandler(req: AuthenticatedRequest, res: Respon
     const dataToUpdate: any = {};
     if (title !== undefined) dataToUpdate.title = title.trim();
     if (content !== undefined) dataToUpdate.content = content.trim();
-    if (category && Object.values(NoticeCategory).includes(category)) dataToUpdate.category = category as NoticeCategory;
-    if (priority && Object.values(NoticePriority).includes(priority)) dataToUpdate.priority = priority as NoticePriority;
+    if (category && Object.values(NoticeCategory).includes(category)) dataToUpdate.category = category as NoticeCategoryType;
+    if (priority && Object.values(NoticePriority).includes(priority)) dataToUpdate.priority = priority as NoticePriorityType;
     if (targetAudience !== undefined) dataToUpdate.targetAudience = targetAudience.trim();
     if (isPinned !== undefined || isImportant !== undefined) {
       const pinVal = Boolean(isPinned !== undefined ? isPinned : isImportant);

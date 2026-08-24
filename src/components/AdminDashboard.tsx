@@ -22,9 +22,11 @@ import {
   Shield,
   Sparkles,
   RefreshCw,
-  Timer,
   CheckCheck,
-  Activity
+  Activity,
+  ShieldCheck,
+  ListFilter,
+  Timer
 } from 'lucide-react';
 import { 
   Complaint, 
@@ -249,78 +251,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   if (!isAuthorized) {
     return (
-      <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 text-center max-w-2xl mx-auto my-12 shadow-none">
-        <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="bg-[#111827] border border-rose-500/30 rounded-2xl p-8 text-center max-w-2xl mx-auto my-12 shadow-sm">
+        <div className="w-14 h-14 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
           <ShieldAlert className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-black text-red-950 mb-2">Admin Dashboard Restricted</h2>
-        <p className="text-sm text-red-700 mb-6 leading-relaxed">
+        <h2 className="text-xl font-bold text-white mb-2">Admin Dashboard Restricted</h2>
+        <p className="text-sm text-slate-400 mb-6 leading-relaxed">
           The Admin Dashboard is only accessible to users with the Administrator role.
-          Your current active role is <strong>{currentUser.role}</strong>.
+          Your current active role is <strong className="text-teal-400">{currentUser.role}</strong>.
         </p>
       </div>
     );
   }
 
   return (
-    <div id="admin-dashboard-container" className="space-y-6">
+    <div id="admin-dashboard-container" className="space-y-8 animate-in fade-in zoom-in-95 duration-200">
       
-      {/* Dashboard Top Header */}
-      <div className="bg-[#111827] p-5 sm:p-6 rounded-2xl border border-[#1F2937] shadow-none flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="bg-teal-500/10 text-teal-400 text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md border border-teal-100">
-              Admin Overview
-            </span>
-            <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
-              <Activity className="w-3.5 h-3.5 text-emerald-500" />
-              Live Server-Side Data
+      {/* Welcome & Overview Banner */}
+      <div className="bg-[#111827] border border-[#1F2937] rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-lg shadow-slate-900/50">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-teal-400 font-medium text-xs flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4" /> Good Evening, {currentUser.name.split(' ')[0]} (Administrator)
+              </span>
               {lastServerFetchTime && (
-                <span className="text-slate-400 font-normal">· Synced at {lastServerFetchTime}</span>
+                <span className="text-slate-400 text-xs">· Synced at {lastServerFetchTime}</span>
               )}
-            </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Society Maintenance Hub
+            </h1>
+            <p className="text-slate-400 text-xs sm:text-sm mt-1 max-w-2xl">
+              Real-time complaint triage, category breakdown, and SLA overdue monitoring for Oakwood Heights.
+            </p>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            Society Complaints Dashboard
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Real-time status breakdown, category distribution, and overdue SLA monitoring for Oakwood Heights.
-          </p>
+
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap relative z-10">
+            {/* Refresh Server Stats Button */}
+            <button
+              id="btn-dashboard-refresh-stats"
+              onClick={() => loadServerDashboardStats(true)}
+              disabled={isLoadingServerStats}
+              title="Fetch real-time aggregated metrics directly from database server"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1F2937] hover:bg-[#374151] border border-[#374151] text-white text-xs font-semibold transition-all disabled:opacity-50 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-teal-400 ${isLoadingServerStats ? 'animate-spin' : ''}`} />
+              <span>{isLoadingServerStats ? 'Syncing...' : 'Refresh Stats'}</span>
+            </button>
+
+            <button
+              id="btn-dashboard-manage-complaints"
+              onClick={() => onNavigateToComplaints && onNavigateToComplaints()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md shadow-teal-900/20 cursor-pointer"
+            >
+              <span>Open Complaint Desk</span>
+              <ArrowUpRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          {/* Refresh Server Stats Button */}
-          <button
-            id="btn-dashboard-refresh-stats"
-            onClick={() => loadServerDashboardStats(true)}
-            disabled={isLoadingServerStats}
-            title="Fetch real-time aggregated metrics directly from database server"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1F2937] hover:bg-[#374151] text-slate-300 text-xs font-semibold transition-all border border-[#1F2937] disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${isLoadingServerStats ? 'animate-spin' : ''}`} />
-            <span>{isLoadingServerStats ? 'Syncing...' : 'Refresh Stats'}</span>
-          </button>
-
-          <button
-            id="btn-dashboard-manage-complaints"
-            onClick={() => onNavigateToComplaints && onNavigateToComplaints()}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-none"
-          >
-            <span>Open Complaint Desk</span>
-            <ArrowUpRight className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Decorative ambient glow */}
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-teal-500/10 blur-[100px] rounded-full pointer-events-none"></div>
       </div>
 
-      {/* SECTION 1: Total Complaints by Status (Open, In Progress, Resolved) + Overdue Banner */}
+      {/* SECTION 1: Status KPI Cards */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wide flex items-center gap-2">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
             <Layers className="w-4 h-4 text-teal-400" />
             <span>Complaints by Status</span>
           </h2>
           <span className="text-xs text-slate-500 font-medium">
-            Total Complaints: <strong className="text-white text-sm font-black">{metrics.total}</strong>
+            Total Complaints: <strong className="text-white font-bold">{metrics.total}</strong>
           </span>
         </div>
 
@@ -330,22 +333,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div 
             id="dashboard-card-status-open"
             onClick={() => onNavigateToComplaints && onNavigateToComplaints({ status: 'OPEN' })}
-            className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-none hover:border-amber-300 hover:shadow-md transition-all cursor-pointer group"
+            className="bg-[#111827] border border-[#1F2937] hover:border-blue-500/30 rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden transition-all group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Open Complaints</span>
-              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform border border-amber-100">
-                <Clock className="w-5 h-5" />
+              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Open Action</span>
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Clock className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
+            <div className="mt-4 flex items-baseline gap-2">
               <span className="text-3xl font-black text-white">{metrics.openCount}</span>
-              <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                {metrics.total > 0 ? Math.round((metrics.openCount / metrics.total) * 100) : 0}% of total
+              <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                {metrics.total > 0 ? Math.round((metrics.openCount / metrics.total) * 100) : 0}%
               </span>
             </div>
-            <div className="mt-2 pt-2 border-t border-[#1F2937] flex items-center justify-between text-xs text-slate-500">
-              <span>Awaiting / Scheduled</span>
+            <div className="mt-3 pt-2 border-t border-[#1F2937] flex items-center justify-between text-xs text-slate-500">
+              <span>Awaiting review</span>
               <span className="text-teal-400 font-bold group-hover:underline flex items-center gap-0.5">
                 View open <ChevronRight className="w-3.5 h-3.5" />
               </span>
@@ -356,22 +359,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div 
             id="dashboard-card-status-inprogress"
             onClick={() => onNavigateToComplaints && onNavigateToComplaints({ status: 'IN_PROGRESS' })}
-            className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-none hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
+            className="bg-[#111827] border border-[#1F2937] hover:border-orange-500/30 rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden transition-all group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">In Progress</span>
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform border border-blue-100">
-                <Wrench className="w-5 h-5" />
+              <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Working</span>
+              <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Wrench className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
+            <div className="mt-4 flex items-baseline gap-2">
               <span className="text-3xl font-black text-white">{metrics.inProgressCount}</span>
-              <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                {metrics.total > 0 ? Math.round((metrics.inProgressCount / metrics.total) * 100) : 0}% of total
+              <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">
+                {metrics.total > 0 ? Math.round((metrics.inProgressCount / metrics.total) * 100) : 0}%
               </span>
             </div>
-            <div className="mt-2 pt-2 border-t border-[#1F2937] flex items-center justify-between text-xs text-slate-500">
-              <span>Technician on-site</span>
+            <div className="mt-3 pt-2 border-t border-[#1F2937] flex items-center justify-between text-xs text-slate-500">
+              <span>Technician active</span>
               <span className="text-teal-400 font-bold group-hover:underline flex items-center gap-0.5">
                 View active <ChevronRight className="w-3.5 h-3.5" />
               </span>
@@ -382,22 +385,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div 
             id="dashboard-card-status-resolved"
             onClick={() => onNavigateToComplaints && onNavigateToComplaints({ status: 'RESOLVED' })}
-            className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-none hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer group"
+            className="bg-[#111827] border border-[#1F2937] hover:border-green-500/30 rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden transition-all group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Resolved</span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform border border-emerald-100">
-                <CheckCircle2 className="w-5 h-5" />
+              <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">Resolved</span>
+              <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
+            <div className="mt-4 flex items-baseline gap-2">
               <span className="text-3xl font-black text-white">{metrics.resolvedCount}</span>
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+              <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
                 {metrics.resolutionRate}% Rate
               </span>
             </div>
-            <div className="mt-2 pt-2 border-t border-[#1F2937] flex items-center justify-between text-xs text-slate-500">
-              <span>Successfully closed</span>
+            <div className="mt-3 pt-2 border-t border-[#1F2937] flex items-center justify-between text-xs text-slate-500">
+              <span>Closed tickets</span>
               <span className="text-teal-400 font-bold group-hover:underline flex items-center gap-0.5">
                 View resolved <ChevronRight className="w-3.5 h-3.5" />
               </span>
@@ -408,37 +411,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div 
             id="dashboard-card-status-overdue"
             onClick={() => onNavigateToComplaints && onNavigateToComplaints({ overdueOnly: true })}
-            className={`p-5 rounded-2xl border shadow-none transition-all cursor-pointer group ${
+            className={`rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden transition-all group cursor-pointer ${
               metrics.overdueCount > 0 
-                ? 'bg-red-50/70 border-red-300 hover:border-red-400 hover:shadow-md' 
-                : 'bg-[#111827] border-[#1F2937] hover:border-[#374151]'
+                ? 'bg-[#111827] border border-rose-500/40 hover:border-rose-500' 
+                : 'bg-[#111827] border border-[#1F2937] hover:border-teal-500/30'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-red-700 uppercase tracking-wider flex items-center gap-1">
+              <span className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
+                metrics.overdueCount > 0 ? 'text-rose-400' : 'text-slate-400'
+              }`}>
                 Total Overdue
               </span>
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${
-                metrics.overdueCount > 0 ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-[#1F2937] text-slate-500'
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform ${
+                metrics.overdueCount > 0 ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400' : 'bg-[#1F2937] text-slate-500'
               }`}>
-                <AlertTriangle className="w-5 h-5" />
+                <AlertTriangle className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className={`text-3xl font-black ${metrics.overdueCount > 0 ? 'text-red-700' : 'text-white'}`}>
+            <div className="mt-4 flex items-baseline gap-2">
+              <span className={`text-3xl font-black ${metrics.overdueCount > 0 ? 'text-rose-400' : 'text-white'}`}>
                 {metrics.overdueCount}
               </span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                 metrics.overdueCount > 0 
-                  ? 'bg-red-500/20 text-red-400 border-red-200' 
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
+                  : 'bg-green-500/10 text-green-400 border-green-500/20'
               }`}>
                 {metrics.overdueCount > 0 ? `>${thresholdDays}d SLA Breached` : '0 Breaches'}
               </span>
             </div>
-            <div className="mt-2 pt-2 border-t border-[#1F2937]/60 flex items-center justify-between text-xs text-slate-400">
+            <div className="mt-3 pt-2 border-t border-[#1F2937] flex items-center justify-between text-xs text-slate-500">
               <span>SLA: {thresholdDays} days</span>
-              <span className="text-red-700 font-bold group-hover:underline flex items-center gap-0.5">
+              <span className={`${metrics.overdueCount > 0 ? 'text-rose-400' : 'text-teal-400'} font-bold group-hover:underline flex items-center gap-0.5`}>
                 {metrics.overdueCount > 0 ? 'Review Overdue' : 'SLA Met'} <ChevronRight className="w-3.5 h-3.5" />
               </span>
             </div>
@@ -449,24 +454,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* SECTION 2: OVERDUE TICKETS QUEUE (If any are overdue) */}
       {metrics.overdueCount > 0 && (
-        <div className="bg-red-50/50 rounded-2xl border border-red-200 p-5 shadow-none space-y-3">
+        <div className="bg-[#111827] rounded-2xl border border-rose-500/30 p-5 md:p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-red-100 text-red-700 flex items-center justify-center font-bold">
-                <AlertTriangle className="w-4 h-4" />
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center font-bold">
+                <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-red-950">
+                <h3 className="text-sm font-bold text-white">
                   Overdue Complaints Priority Queue ({metrics.overdueCount})
                 </h3>
-                <p className="text-xs text-red-700">
+                <p className="text-xs text-slate-400">
                   These tickets have remained unresolved for {thresholdDays} or more days and require immediate administrative attention.
                 </p>
               </div>
             </div>
             <button
               onClick={() => onNavigateToComplaints && onNavigateToComplaints({ overdueOnly: true })}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold self-start sm:self-auto transition-colors"
+              className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold self-start sm:self-auto transition-colors cursor-pointer"
             >
               <span>Manage Overdue in Desk</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -478,26 +483,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               const overdueInfo = deriveComplaintOverdueStatus(complaint, thresholdDays);
               return (
                 <div 
-                  key={complaint.id}
+                  key={complaint.id} 
                   onClick={() => onSelectComplaint && onSelectComplaint(complaint)}
-                  className="bg-[#111827] p-4 rounded-xl border border-red-200 shadow-2xs hover:shadow-none hover:border-red-300 transition-all cursor-pointer space-y-2"
+                  className="bg-[#0B1121] p-4 rounded-xl border border-[#1F2937] hover:border-rose-500/50 transition-all cursor-pointer space-y-2 group"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-black text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">
-                      {complaint.ticketNumber}
+                    <span className="font-mono text-[10px] font-bold text-slate-400">
+                      #{complaint.ticketNumber || complaint.id}
                     </span>
-                    <span className="text-[11px] font-bold text-red-800 bg-red-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {overdueInfo.daysOpen} days open ({overdueInfo.daysOverdue}d overdue)
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {overdueInfo.daysOpen}d open ({overdueInfo.daysOverdue}d overdue)
                     </span>
                   </div>
 
-                  <h4 className="text-xs font-bold text-white line-clamp-1">
+                  <h4 className="text-xs font-bold text-white group-hover:text-teal-400 transition-colors line-clamp-1">
                     {complaint.title}
                   </h4>
 
-                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-[#1F2937]">
                     <span className="flex items-center gap-1 font-medium">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                      <Building2 className="w-3.5 h-3.5 text-slate-500" />
                       Unit {complaint.unitNumber} ({complaint.tower})
                     </span>
                     <CategoryBadge category={complaint.category} />
@@ -510,19 +515,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {/* SECTION 3: Complaints by Category */}
-      <div className="bg-[#111827] p-5 sm:p-6 rounded-2xl border border-[#1F2937] shadow-none space-y-5">
+      <div className="bg-[#111827] p-5 sm:p-6 rounded-2xl border border-[#1F2937] shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1F2937] pb-4">
           <div>
             <h2 className="text-base font-bold text-white flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-teal-400" />
               <span>Complaints by Category</span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5">
               Breakdown of maintenance tickets across all infrastructure and service domains.
             </p>
           </div>
 
-          <div className="text-xs text-slate-500 font-medium">
+          <div className="text-xs text-slate-400 font-medium">
             Click any category to filter and manage tickets.
           </div>
         </div>
@@ -540,7 +545,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 key={catKey}
                 id={`category-stat-${catKey.toLowerCase()}`}
                 onClick={() => onNavigateToComplaints && onNavigateToComplaints({ category: catKey })}
-                className="p-4 rounded-xl border border-[#1F2937] hover:border-teal-300 hover:shadow-none transition-all cursor-pointer bg-[#0B1121]/50 hover:bg-[#111827] group"
+                className="p-4 rounded-xl border border-[#1F2937] hover:border-teal-500/50 transition-all cursor-pointer bg-[#0B1121] hover:bg-[#111827] group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -548,14 +553,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       {config.icon}
                     </span>
                     <div>
-                      <span className="text-xs font-bold text-slate-200 group-hover:text-teal-400 transition-colors">
+                      <span className="text-xs font-bold text-white group-hover:text-teal-400 transition-colors">
                         {config.label}
                       </span>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-[11px] text-slate-400">
                         {activeCount > 0 ? (
-                          <span className="text-amber-700 font-semibold">{activeCount} active</span>
+                          <span className="text-orange-400 font-semibold">{activeCount} active</span>
                         ) : (
-                          <span className="text-slate-400">No active tickets</span>
+                          <span className="text-slate-500">No active tickets</span>
                         )}
                       </div>
                     </div>
@@ -568,24 +573,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 {/* Visual Progress Bar */}
-                <div className="mt-3 w-full bg-[#374151]/80 rounded-full h-1.5 overflow-hidden flex">
+                <div className="mt-3 w-full bg-[#1F2937] rounded-full h-1.5 overflow-hidden flex">
                   {data.resolved > 0 && (
                     <div 
-                      className="bg-emerald-500 h-full"
+                      className="bg-green-500 h-full"
                       style={{ width: `${data.total > 0 ? (data.resolved / data.total) * 100 : 0}%` }}
                       title={`${data.resolved} Resolved`}
                     />
                   )}
                   {data.inProgress > 0 && (
                     <div 
-                      className="bg-blue-500 h-full"
+                      className="bg-orange-500 h-full"
                       style={{ width: `${data.total > 0 ? (data.inProgress / data.total) * 100 : 0}%` }}
                       title={`${data.inProgress} In Progress`}
                     />
                   )}
                   {data.open > 0 && (
                     <div 
-                      className="bg-amber-500 h-full"
+                      className="bg-blue-500 h-full"
                       style={{ width: `${data.total > 0 ? (data.open / data.total) * 100 : 0}%` }}
                       title={`${data.open} Open`}
                     />
@@ -593,10 +598,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 {/* Sub-status counts */}
-                <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 pt-1">
-                  <span>Open: <strong>{data.open}</strong></span>
-                  <span>In Work: <strong>{data.inProgress}</strong></span>
-                  <span>Resolved: <strong className="text-emerald-700">{data.resolved}</strong></span>
+                <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                  <span>Open: <strong className="text-white">{data.open}</strong></span>
+                  <span>In Work: <strong className="text-white">{data.inProgress}</strong></span>
+                  <span>Resolved: <strong className="text-green-400">{data.resolved}</strong></span>
                 </div>
               </div>
             );
@@ -607,11 +612,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* SECTION 4: Useful Summary Statistics */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wide flex items-center gap-2">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-teal-400" />
             <span>Summary Statistics & Society SLA Metrics</span>
           </h2>
-          <span className="text-xs text-slate-500 font-medium">
+          <span className="text-xs text-slate-400 font-medium">
             Active SLA Rule: <strong className="text-white">{thresholdDays} Days</strong>
           </span>
         </div>
@@ -619,89 +624,89 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
           {/* Card 1: Resolution Efficiency */}
-          <div className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-none flex flex-col justify-between">
+          <div className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-sm flex flex-col justify-between">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Resolution Rate</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resolution Rate</span>
                 <div className="mt-2 flex items-baseline gap-2">
                   <span className="text-3xl font-black text-white">{metrics.resolutionRate}%</span>
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
                     {metrics.resolvedCount}/{metrics.total}
                   </span>
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                <CheckCheck className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 flex items-center justify-center">
+                <CheckCheck className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-xs text-slate-500 mt-3 pt-2 border-t border-[#1F2937]">
+            <p className="text-xs text-slate-400 mt-3 pt-2 border-t border-[#1F2937]">
               Closed or resolved complaints ratio across entire society.
             </p>
           </div>
 
           {/* Card 2: Average Resolution Time */}
-          <div className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-none flex flex-col justify-between">
+          <div className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-sm flex flex-col justify-between">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Resolution Time</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Avg Resolution Time</span>
                 <div className="mt-2 flex items-baseline gap-2">
                   <span className="text-3xl font-black text-white">
                     {metrics.avgResolutionDays > 0 ? `${metrics.avgResolutionDays}d` : `${metrics.avgResolutionHours}h`}
                   </span>
-                  <span className="text-[11px] font-semibold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-100">
+                  <span className="text-[10px] font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20">
                     {metrics.avgResolutionHours}h avg
                   </span>
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center border border-teal-100">
-                <Timer className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center">
+                <Timer className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-xs text-slate-500 mt-3 pt-2 border-t border-[#1F2937]">
+            <p className="text-xs text-slate-400 mt-3 pt-2 border-t border-[#1F2937]">
               Average turnaround from creation to ticket resolution.
             </p>
           </div>
 
           {/* Card 3: Priority Urgency */}
-          <div className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-none flex flex-col justify-between">
+          <div className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-sm flex flex-col justify-between">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Urgent Active Tickets</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Urgent Active</span>
                 <div className="mt-2 flex items-baseline gap-2">
                   <span className="text-3xl font-black text-white">{metrics.urgentActiveCount}</span>
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
-                    metrics.urgentActiveCount > 0 ? 'bg-red-50 text-red-800 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                    metrics.urgentActiveCount > 0 ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'
                   }`}>
-                    {metrics.urgentActiveCount > 0 ? 'Active High/Urgent' : 'All Clear'}
+                    {metrics.urgentActiveCount > 0 ? 'Active Urgent' : 'All Clear'}
                   </span>
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
-                <Flame className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center">
+                <Flame className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-xs text-slate-500 mt-3 pt-2 border-t border-[#1F2937]">
+            <p className="text-xs text-slate-400 mt-3 pt-2 border-t border-[#1F2937]">
               High priority / emergency requests active in building.
             </p>
           </div>
 
           {/* Card 4: SLA Compliance Rate */}
-          <div className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-none flex flex-col justify-between">
+          <div className="bg-[#111827] p-5 rounded-2xl border border-[#1F2937] shadow-sm flex flex-col justify-between">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">SLA Compliance</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SLA Compliance</span>
                 <div className="mt-2 flex items-baseline gap-2">
                   <span className="text-3xl font-black text-white">{metrics.slaComplianceRate}%</span>
-                  <span className="text-[11px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
+                  <span className="text-[10px] font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20">
                     ≤ {thresholdDays}d Rule
                   </span>
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center border border-teal-100">
-                <Clock className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center">
+                <Clock className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-xs text-slate-500 mt-3 pt-2 border-t border-[#1F2937]">
+            <p className="text-xs text-slate-400 mt-3 pt-2 border-t border-[#1F2937]">
               Percentage of tickets maintained within standard SLA target.
             </p>
           </div>

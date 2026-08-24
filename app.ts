@@ -20,8 +20,10 @@ import {
   requireAdmin,
   requireResident,
   getAdminSetupSecret,
-  AuthenticatedRequest
+  AuthenticatedRequest,
+  inMemoryUsers
 } from './server/auth';
+import { getPrisma } from './server/db';
 import {
   createResidentComplaintHandler,
   getResidentComplaintsHandler,
@@ -32,7 +34,11 @@ import {
   getAdminComplaintStatusHistoryHandler,
   getAdminSettingsHandler,
   updateAdminSettingsHandler,
-  getAdminDashboardStatsHandler
+  getAdminDashboardStatsHandler,
+  addAdminComplaintCommentHandler,
+  getStaffMembersHandler,
+  assignAdminComplaintTechnicianHandler,
+  residentConfirmComplaintHandler
 } from './server/complaints';
 import {
   getNoticesHandler,
@@ -254,6 +260,124 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res) => {
 });
 
 /**
+ * Update Authenticated User Profile (/api/auth/profile)
+ * Guarded server-side via requireAuth
+ * Allows updating name, phone, unitNumber, tower
+ */
+const updateProfileHandler = async (req: AuthenticatedRequest, res: express.Response) => {
+  try {
+    const user = req.user;
+    if (!user || !user.id) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required.',
+        code: 'UNAUTHENTICATED'
+      });
+    }
+
+    const { name, phone, unitNumber, tower } = req.body;
+    const client = getPrisma();
+
+    if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name cannot be empty.'
+      });
+    }
+
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name.trim();
+    if (phone !== undefined) updateData.phone = phone.trim();
+    if (unitNumber !== undefined) updateData.unitNumber = unitNumber.trim();
+    if (tower !== undefined) updateData.tower = tower.trim();
+
+    let updatedUser: any = null;
+
+    if (client) {
+      try {
+        updatedUser = await client.user.update({
+          where: { id: user.id },
+          data: updateData,
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            unitNumber: true,
+            tower: true,
+            phone: true,
+            avatar: true
+          }
+        });
+      } catch (dbErr) {
+        console.warn('[DB] Prisma profile update failed, using memory store:', dbErr);
+      }
+    }
+
+    if (!updatedUser) {
+      const memUser = inMemoryUsers.get(user.email.toLowerCase());
+      if (memUser) {
+        if (updateData.name) memUser.name = updateData.name;
+        if (updateData.phone !== undefined) memUser.phone = updateData.phone;
+        if (updateData.unitNumber !== undefined) memUser.unitNumber = updateData.unitNumber;
+        if (updateData.tower !== undefined) memUser.tower = updateData.tower;
+        updatedUser = {
+          id: memUser.id,
+          email: memUser.email,
+          name: memUser.name,
+          role: memUser.role,
+          unitNumber: memUser.unitNumber,
+          tower: memUser.tower,
+          phone: memUser.phone,
+          avatar: null
+        };
+      } else {
+        updatedUser = {
+          ...user,
+          ...updateData
+        };
+      }
+    }
+
+    // Generate fresh JWT token with updated user fields
+    const newToken = generateToken({
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      role: updatedUser.role,
+      unitNumber: updatedUser.unitNumber,
+      tower: updatedUser.tower,
+      phone: updatedUser.phone
+    });
+
+    res.cookie('token', newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully.',
+      user: updatedUser,
+      token: newToken
+    });
+  } catch (error: any) {
+    console.error('Profile update error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to update profile.'
+    });
+  }
+};
+
+app.put('/api/auth/profile', requireAuth, updateProfileHandler);
+app.patch('/api/auth/profile', requireAuth, updateProfileHandler);
+app.put('/api/user/profile', requireAuth, updateProfileHandler);
+app.patch('/api/user/profile', requireAuth, updateProfileHandler);
+
+/**
  * Secure Admin Bootstrap / Creation Endpoint
  * Admins CANNOT be registered through public signup.
  * Requires secret header 'x-admin-setup-secret' matching ADMIN_SETUP_SECRET.
@@ -354,6 +478,14 @@ app.get('/api/uploads/status', getPhotoUploadStatusHandler);
 app.post('/api/complaints', requireResident, createResidentComplaintHandler);
 app.get('/api/complaints', requireResident, getResidentComplaintsHandler);
 app.get('/api/complaints/:id', requireAuth, getResidentComplaintByIdHandler);
+app.patch('/api/resident/complaints/:id/action', requireResident, residentConfirmComplaintHandler);
+app.patch('/api/complaints/:id/resident-action', requireAuth, residentConfirmComplaintHandler);
+
+// -------------------------------------------------------------
+// Facility Staff & Technician APIs
+// -------------------------------------------------------------
+app.get('/api/staff', getStaffMembersHandler);
+app.get('/api/admin/staff', requireAdmin, getStaffMembersHandler);
 
 // -------------------------------------------------------------
 // Step 5: Admin Complaint Management APIs
@@ -366,25 +498,32 @@ app.get('/api/complaints/:id', requireAuth, getResidentComplaintByIdHandler);
  *   1. View all complaints with category, status, date, search filters (GET /api/admin/complaints)
  *   2. Change priority: LOW, MEDIUM, HIGH (PATCH /api/admin/complaints/:id/priority)
  *   3. Change status: OPEN -> IN_PROGRESS -> RESOLVED with optional note (PATCH /api/admin/complaints/:id/status)
- *   4. View complete status history (GET /api/admin/complaints/:id/history)
- * - RESOLVED is terminal and cannot be reopened
+ *   4. Assign technician to complaint (PATCH /api/admin/complaints/:id/technician)
+ *   5. View complete status history (GET /api/admin/complaints/:id/history)
  * - Residents forbidden server-side
  */
 app.get('/api/admin/complaints', requireAdmin, getAdminComplaintsHandler);
 app.get('/api/admin/complaints/:id', requireAdmin, getResidentComplaintByIdHandler);
 app.patch('/api/admin/complaints/:id/status', requireAdmin, updateAdminComplaintStatusHandler);
 app.patch('/api/admin/complaints/:id/priority', requireAdmin, updateAdminComplaintPriorityHandler);
+app.patch('/api/admin/complaints/:id/technician', requireAdmin, assignAdminComplaintTechnicianHandler);
+app.patch('/api/admin/complaints/:id/assign', requireAdmin, assignAdminComplaintTechnicianHandler);
 app.get('/api/admin/complaints/:id/history', requireAdmin, getAdminComplaintStatusHistoryHandler);
+app.post('/api/admin/complaints/:id/comments', requireAdmin, addAdminComplaintCommentHandler);
 
-// Also map direct /api/complaints/:id mutations to requireAdmin
+// Also map direct /api/complaints/:id mutations
 app.patch('/api/complaints/:id/status', requireAdmin, updateAdminComplaintStatusHandler);
 app.patch('/api/complaints/:id/priority', requireAdmin, updateAdminComplaintPriorityHandler);
+app.patch('/api/complaints/:id/assign', requireAdmin, assignAdminComplaintTechnicianHandler);
+app.post('/api/complaints/:id/comments', requireAuth, addAdminComplaintCommentHandler);
 
 // -------------------------------------------------------------
 // Step 6: Overdue Complaint Detection & SLA Settings APIs
 // -------------------------------------------------------------
 app.get('/api/admin/settings', requireAdmin, getAdminSettingsHandler);
 app.get('/api/admin/settings/overdue-threshold', requireAdmin, getAdminSettingsHandler);
+app.put('/api/admin/settings', requireAdmin, updateAdminSettingsHandler);
+app.patch('/api/admin/settings', requireAdmin, updateAdminSettingsHandler);
 app.put('/api/admin/settings/overdue-threshold', requireAdmin, updateAdminSettingsHandler);
 app.post('/api/admin/settings/overdue-threshold', requireAdmin, updateAdminSettingsHandler);
 app.patch('/api/admin/settings/overdue-threshold', requireAdmin, updateAdminSettingsHandler);

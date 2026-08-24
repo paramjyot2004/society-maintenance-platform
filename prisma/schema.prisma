@@ -36,6 +36,7 @@ enum ComplaintStatus {
   OPEN
   IN_PROGRESS
   RESOLVED
+  CLOSED
 }
 
 enum NoticeCategory {
@@ -90,6 +91,11 @@ model Complaint {
   // Complaint belongs to a User
   userId               String
   user                 User                     @relation("UserComplaints", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Technician Assignment
+  assignedStaffId      String?
+  assignedStaffName    String?
+  staffContact         String?
 
   // Resolution details
   resolutionNotes      String?                  @db.Text

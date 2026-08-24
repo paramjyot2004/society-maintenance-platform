@@ -15,12 +15,14 @@ import { loginUser, registerResident } from '../services/authService';
 
 interface LoginPageProps {
   onLoginSuccess: (user: CurrentUser, token: string) => void;
+  onNavigateToAdminPortal?: () => void;
   appName?: string;
   societyTagline?: string;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
   onLoginSuccess,
+  onNavigateToAdminPortal,
   appName = 'Oakwood Heights',
   societyTagline = 'Report maintenance issues, track complaint status, and stay updated with your society.'
 }) => {
@@ -408,6 +410,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Link to Admin Portal */}
+            {onNavigateToAdminPortal && (
+              <div className="mt-4 pt-3 border-t border-[#1F2937] text-center">
+                <button
+                  type="button"
+                  onClick={onNavigateToAdminPortal}
+                  className="text-xs text-teal-400 hover:text-teal-300 font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <span>Administrator Portal & Login (/admin/login)</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
           </div>
 

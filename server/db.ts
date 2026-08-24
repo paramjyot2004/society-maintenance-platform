@@ -1,14 +1,15 @@
 import prismaPkg from '@prisma/client';
+import type { PrismaClient as PrismaClientType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 
 const { PrismaClient } = (prismaPkg as any).default || prismaPkg;
-export type { PrismaClient } from '@prisma/client';
+export type { PrismaClientType as PrismaClient };
 
-let prismaClient: PrismaClient | null = null;
+let prismaClient: PrismaClientType | null = null;
 let pgPool: pg.Pool | null = null;
 
-export function getPrisma(): PrismaClient | null {
+export function getPrisma(): PrismaClientType | null {
   if (!prismaClient) {
     try {
       const connectionString = process.env.DATABASE_URL;
@@ -31,7 +32,7 @@ export function getPrisma(): PrismaClient | null {
   return prismaClient;
 }
 
-export const prisma = new Proxy({} as PrismaClient, {
+export const prisma = new Proxy({} as PrismaClientType, {
   get(target, prop, receiver) {
     const client = getPrisma();
     if (!client) {

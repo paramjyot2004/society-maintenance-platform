@@ -7,7 +7,8 @@ import {
   CurrentUser,
   AdminSettings,
   ComplaintOverdueInfo,
-  AdminDashboardStats
+  AdminDashboardStats,
+  StaffMember
 } from '../types';
 import { getStoredToken } from './authService';
 
@@ -124,10 +125,13 @@ export function deriveComplaintOverdueStatus(
 
 export interface AdminComplaintFilters {
   category?: string;
-  status?: string; // 'ALL' | 'OVERDUE' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'
+  status?: string; // 'ALL' | 'OVERDUE' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
   date?: string; // YYYY-MM-DD
   searchQuery?: string;
   overdueOnly?: boolean;
+  priority?: string; // 'ALL' | 'LOW' | 'MEDIUM' | 'HIGH'
+  unit?: string;
+  resident?: string;
 }
 
 export interface AdminComplaintsResult {
@@ -173,11 +177,16 @@ export function getAdminComplaints(
     const resolvedCount = complaints.filter(c => c.status === 'RESOLVED' || c.status === 'CLOSED').length;
 
     if (filters) {
-      const { category, status, date, searchQuery, overdueOnly } = filters;
+      const { category, status, date, searchQuery, overdueOnly, priority, unit, resident } = filters;
 
       // Filter by category
       if (category && category !== 'ALL') {
         result = result.filter(c => c.category === category);
+      }
+
+      // Filter by priority / urgency
+      if (priority && priority !== 'ALL') {
+        result = result.filter(c => c.priority === priority);
       }
 
       // Filter by overdue only
@@ -185,7 +194,7 @@ export function getAdminComplaints(
         result = result.filter(c => deriveComplaintOverdueStatus(c, thresholdDays, now).isOverdue);
       }
 
-      // Filter by status (OVERDUE, OPEN, IN_PROGRESS, RESOLVED, or ALL)
+      // Filter by status (OVERDUE, OPEN, IN_PROGRESS, RESOLVED, CLOSED, or ALL)
       if (status && status !== 'ALL') {
         if (status === 'OVERDUE') {
           result = result.filter(c => deriveComplaintOverdueStatus(c, thresholdDays, now).isOverdue);
@@ -194,10 +203,24 @@ export function getAdminComplaints(
         } else if (status === 'IN_PROGRESS') {
           result = result.filter(c => c.status === 'IN_PROGRESS');
         } else if (status === 'RESOLVED') {
-          result = result.filter(c => c.status === 'RESOLVED' || c.status === 'CLOSED');
+          result = result.filter(c => c.status === 'RESOLVED');
+        } else if (status === 'CLOSED') {
+          result = result.filter(c => c.status === 'CLOSED');
         } else {
           result = result.filter(c => c.status === status);
         }
+      }
+
+      // Filter by unit
+      if (unit && unit !== 'ALL' && unit.trim() !== '') {
+        const u = unit.toLowerCase().trim();
+        result = result.filter(c => c.unitNumber.toLowerCase().includes(u) || c.tower.toLowerCase().includes(u));
+      }
+
+      // Filter by resident
+      if (resident && resident !== 'ALL' && resident.trim() !== '') {
+        const r = resident.toLowerCase().trim();
+        result = result.filter(c => c.residentName.toLowerCase().includes(r) || c.residentContact.toLowerCase().includes(r));
       }
 
       // Filter by date (matches creation date formatted YYYY-MM-DD)
@@ -208,7 +231,7 @@ export function getAdminComplaints(
         });
       }
 
-      // Filter by search query
+      // Filter by search query across complaint ID, resident, unit, title, description
       if (searchQuery && searchQuery.trim() !== '') {
         const query = searchQuery.toLowerCase().trim();
         result = result.filter(c => 
@@ -216,7 +239,9 @@ export function getAdminComplaints(
           c.title.toLowerCase().includes(query) ||
           c.description.toLowerCase().includes(query) ||
           c.residentName.toLowerCase().includes(query) ||
-          c.unitNumber.toLowerCase().includes(query)
+          c.residentContact.toLowerCase().includes(query) ||
+          c.unitNumber.toLowerCase().includes(query) ||
+          c.tower.toLowerCase().includes(query)
         );
       }
     }
@@ -264,17 +289,22 @@ export function getAdminComplaints(
 /**
  * Admin API: Update complaint status (OPEN -> IN_PROGRESS -> RESOLVED)
  * Every status change MUST create a new ComplaintStatusHistory record with actor, timestamp, note.
- * When status is RESOLVED, the complaint is considered closed.
+ * Admin CANNOT close complaints (CLOSED is reserved for resident confirmation).
  */
 export function updateComplaintStatusByAdmin(
   actor: CurrentUser,
   complaintId: string,
   newStatus: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED',
   note?: string,
-  complaints: Complaint[] = []
+  complaints: Complaint[] = [],
+  technician?: StaffMember | null
 ): { success: boolean; data?: Complaint; newHistory?: ComplaintStatusHistory; error?: string } {
   try {
     assertAdminAuthorization(actor);
+
+    if ((newStatus as string) === 'CLOSED') {
+      throw new Error('Administrators cannot close complaints. Only the resident can confirm resolution and close the ticket.');
+    }
 
     const targetIndex = complaints.findIndex(c => c.id === complaintId);
     if (targetIndex === -1) {
@@ -283,6 +313,12 @@ export function updateComplaintStatusByAdmin(
 
     const currentComplaint = complaints[targetIndex];
     const previousStatus = currentComplaint.status;
+
+    let historyNote = note?.trim() ? note.trim() : undefined;
+    if (technician !== undefined && technician?.name !== currentComplaint.assignedStaffName) {
+      const techNote = technician ? `Technician assigned: ${technician.name}` : 'Technician unassigned';
+      historyNote = historyNote ? `${techNote} - Note: ${historyNote}` : techNote;
+    }
 
     // Build the mandatory ComplaintStatusHistory record
     const historyEntry: ComplaintStatusHistory = {
@@ -296,7 +332,7 @@ export function updateComplaintStatusByAdmin(
         role: actor.role,
       },
       timestamp: new Date().toISOString(),
-      note: note?.trim() ? note.trim() : undefined,
+      note: historyNote,
     };
 
     const isResolved = newStatus === 'RESOLVED';
@@ -305,8 +341,11 @@ export function updateComplaintStatusByAdmin(
     const updatedComplaint: Complaint = {
       ...currentComplaint,
       status: newStatus,
+      assignedStaffId: technician !== undefined ? (technician ? technician.id : undefined) : currentComplaint.assignedStaffId,
+      assignedStaffName: technician !== undefined ? (technician ? technician.name : undefined) : currentComplaint.assignedStaffName,
+      staffContact: technician !== undefined ? (technician ? technician.phone : undefined) : currentComplaint.staffContact,
       updatedAt: now,
-      resolvedAt: isResolved ? now : currentComplaint.resolvedAt,
+      resolvedAt: isResolved ? (currentComplaint.resolvedAt || now) : currentComplaint.resolvedAt,
       resolutionNotes: isResolved && note?.trim() ? note.trim() : currentComplaint.resolutionNotes,
       statusHistory: [...(currentComplaint.statusHistory || []), historyEntry],
       comments: [
@@ -315,9 +354,7 @@ export function updateComplaintStatusByAdmin(
           id: `c_${Date.now()}`,
           author: actor.name,
           role: actor.role,
-          text: note?.trim() 
-            ? `Status changed from ${previousStatus} to ${newStatus}. Note: "${note.trim()}"`
-            : `Status changed from ${previousStatus} to ${newStatus}.`,
+          text: historyNote || `Status changed from ${previousStatus} to ${newStatus}.`,
           timestamp: now,
           isInternal: false,
         }
@@ -328,6 +365,82 @@ export function updateComplaintStatusByAdmin(
       success: true, 
       data: updatedComplaint, 
       newHistory: historyEntry 
+    };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Admin API: Assign Technician to Complaint
+ */
+export function assignTechnicianToComplaint(
+  actor: CurrentUser,
+  complaintId: string,
+  staff: StaffMember | null,
+  note?: string,
+  complaints: Complaint[] = []
+): { success: boolean; data?: Complaint; newHistory?: ComplaintStatusHistory; error?: string } {
+  try {
+    assertAdminAuthorization(actor);
+
+    const targetIndex = complaints.findIndex(c => c.id === complaintId);
+    if (targetIndex === -1) {
+      throw new Error(`Complaint with ID ${complaintId} not found.`);
+    }
+
+    const currentComplaint = complaints[targetIndex];
+    const prevTechName = currentComplaint.assignedStaffName;
+    const actionDescription = staff 
+      ? (prevTechName 
+          ? `Technician reassigned from ${prevTechName} to ${staff.name} (${staff.phone || 'Facility Staff'})`
+          : `Technician assigned: ${staff.name} (${staff.phone || 'Facility Staff'})`)
+      : `Technician unassigned (previously ${prevTechName || 'N/A'})`;
+
+    const historyNote = note && note.trim() 
+      ? `${actionDescription} - Note: ${note.trim()}`
+      : actionDescription;
+
+    const historyEntry: ComplaintStatusHistory = {
+      id: `sh_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      complaintId: currentComplaint.id,
+      previousStatus: currentComplaint.status,
+      newStatus: currentComplaint.status,
+      actor: {
+        id: actor.id,
+        name: actor.name,
+        role: actor.role,
+      },
+      timestamp: new Date().toISOString(),
+      note: historyNote,
+    };
+
+    const now = new Date().toISOString();
+
+    const updatedComplaint: Complaint = {
+      ...currentComplaint,
+      assignedStaffId: staff ? staff.id : undefined,
+      assignedStaffName: staff ? staff.name : undefined,
+      staffContact: staff ? staff.phone : undefined,
+      updatedAt: now,
+      statusHistory: [...(currentComplaint.statusHistory || []), historyEntry],
+      comments: [
+        ...(currentComplaint.comments || []),
+        {
+          id: `c_${Date.now()}`,
+          author: actor.name,
+          role: actor.role,
+          text: historyNote,
+          timestamp: now,
+          isInternal: false,
+        }
+      ]
+    };
+
+    return {
+      success: true,
+      data: updatedComplaint,
+      newHistory: historyEntry
     };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
@@ -432,8 +545,17 @@ export async function fetchAdminComplaintsFromServer(
     if (filters?.category && filters.category !== 'ALL') {
       queryParams.set('category', filters.category);
     }
+    if (filters?.priority && filters.priority !== 'ALL') {
+      queryParams.set('priority', filters.priority);
+    }
     if (filters?.status && filters.status !== 'ALL') {
       queryParams.set('status', filters.status);
+    }
+    if (filters?.unit && filters.unit !== 'ALL') {
+      queryParams.set('unit', filters.unit.trim());
+    }
+    if (filters?.resident && filters.resident !== 'ALL') {
+      queryParams.set('resident', filters.resident.trim());
     }
     if (filters?.date && filters.date !== 'ALL') {
       queryParams.set('date', filters.date);
@@ -468,6 +590,9 @@ export async function fetchAdminComplaintsFromServer(
       residentName: c.user?.name || c.residentName || 'Resident',
       residentContact: c.user?.phone || c.residentContact || '',
       photoUrl: c.photoUrl || undefined,
+      assignedStaffId: c.assignedStaffId || undefined,
+      assignedStaffName: c.assignedStaffName || undefined,
+      staffContact: c.staffContact || undefined,
       createdAt: typeof c.createdAt === 'string' ? c.createdAt : new Date(c.createdAt).toISOString(),
       updatedAt: typeof c.updatedAt === 'string' ? c.updatedAt : new Date(c.updatedAt).toISOString(),
       resolvedAt: c.resolvedAt ? (typeof c.resolvedAt === 'string' ? c.resolvedAt : new Date(c.resolvedAt).toISOString()) : undefined,
@@ -609,7 +734,10 @@ export async function updateAdminOverdueThresholdOnServer(
 export async function updateComplaintStatusOnServer(
   complaintId: string,
   newStatus: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED',
-  note?: string
+  note?: string,
+  assignedStaffId?: string | null,
+  assignedStaffName?: string | null,
+  staffContact?: string | null
 ): Promise<{ success: boolean; complaint?: Complaint; newHistory?: ComplaintStatusHistory; error?: string; code?: string }> {
   try {
     const token = getStoredToken();
@@ -623,7 +751,13 @@ export async function updateComplaintStatusOnServer(
     const res = await fetch(`/api/admin/complaints/${complaintId}/status`, {
       method: 'PATCH',
       headers,
-      body: JSON.stringify({ status: newStatus, note })
+      body: JSON.stringify({ 
+        status: newStatus, 
+        note,
+        assignedStaffId,
+        assignedStaffName,
+        staffContact
+      })
     });
 
     const json = await res.json();
@@ -632,6 +766,192 @@ export async function updateComplaintStatusOnServer(
         success: false,
         error: json.error || 'Failed to update complaint status on server.',
         code: json.code
+      };
+    }
+
+    const c = json.complaint;
+    const formattedComplaint: Complaint = {
+      id: c.id,
+      ticketNumber: c.ticketNumber,
+      title: c.title,
+      description: c.description,
+      category: c.category,
+      priority: c.priority,
+      status: c.status,
+      unitNumber: c.user?.unitNumber || c.unitNumber || 'Unit 402',
+      tower: c.user?.tower || c.tower || 'Tower A',
+      residentName: c.user?.name || c.residentName || 'Resident',
+      residentContact: c.user?.phone || c.residentContact || '',
+      photoUrl: c.photoUrl || undefined,
+      assignedStaffId: c.assignedStaffId || undefined,
+      assignedStaffName: c.assignedStaffName || undefined,
+      staffContact: c.staffContact || undefined,
+      createdAt: typeof c.createdAt === 'string' ? c.createdAt : new Date(c.createdAt).toISOString(),
+      updatedAt: typeof c.updatedAt === 'string' ? c.updatedAt : new Date(c.updatedAt).toISOString(),
+      resolvedAt: c.resolvedAt ? (typeof c.resolvedAt === 'string' ? c.resolvedAt : new Date(c.resolvedAt).toISOString()) : undefined,
+      resolutionNotes: c.resolutionNotes || undefined,
+      resolutionPhotoUrl: c.resolutionPhotoUrl || undefined,
+      statusHistory: (c.statusHistory || []).map((h: any) => ({
+        id: h.id,
+        complaintId: h.complaintId || c.id,
+        previousStatus: h.previousStatus || undefined,
+        newStatus: h.newStatus,
+        actor: {
+          id: h.actor?.id || h.actorId,
+          name: h.actor?.name || h.actorName || 'Administrator',
+          role: h.actor?.role || h.actorRole || 'ADMIN'
+        },
+        timestamp: typeof h.timestamp === 'string' ? h.timestamp : new Date(h.timestamp).toISOString(),
+        note: h.note || undefined
+      })),
+      comments: []
+    };
+
+    return {
+      success: true,
+      complaint: formattedComplaint,
+      newHistory: json.newHistory
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Network error updating complaint status.'
+    };
+  }
+}
+
+/**
+ * Server API: Assign Technician to Complaint on Backend
+ */
+export async function assignTechnicianToComplaintOnServer(
+  complaintId: string,
+  assignedStaffId: string | null,
+  assignedStaffName?: string,
+  staffContact?: string,
+  note?: string
+): Promise<{ success: boolean; complaint?: Complaint; newHistory?: ComplaintStatusHistory; error?: string }> {
+  try {
+    const token = getStoredToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`/api/admin/complaints/${complaintId}/technician`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        assignedStaffId,
+        assignedStaffName,
+        staffContact,
+        note
+      })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error || 'Failed to assign technician.'
+      };
+    }
+
+    const c = json.complaint;
+    const formattedComplaint: Complaint = {
+      id: c.id,
+      ticketNumber: c.ticketNumber,
+      title: c.title,
+      description: c.description,
+      category: c.category,
+      priority: c.priority,
+      status: c.status,
+      unitNumber: c.user?.unitNumber || c.unitNumber || 'Unit 402',
+      tower: c.user?.tower || c.tower || 'Tower A',
+      residentName: c.user?.name || c.residentName || 'Resident',
+      residentContact: c.user?.phone || c.residentContact || '',
+      photoUrl: c.photoUrl || undefined,
+      assignedStaffId: c.assignedStaffId || undefined,
+      assignedStaffName: c.assignedStaffName || undefined,
+      staffContact: c.staffContact || undefined,
+      createdAt: typeof c.createdAt === 'string' ? c.createdAt : new Date(c.createdAt).toISOString(),
+      updatedAt: typeof c.updatedAt === 'string' ? c.updatedAt : new Date(c.updatedAt).toISOString(),
+      resolvedAt: c.resolvedAt ? (typeof c.resolvedAt === 'string' ? c.resolvedAt : new Date(c.resolvedAt).toISOString()) : undefined,
+      resolutionNotes: c.resolutionNotes || undefined,
+      resolutionPhotoUrl: c.resolutionPhotoUrl || undefined,
+      statusHistory: (c.statusHistory || []).map((h: any) => ({
+        id: h.id,
+        complaintId: h.complaintId || c.id,
+        previousStatus: h.previousStatus || undefined,
+        newStatus: h.newStatus,
+        actor: {
+          id: h.actor?.id || h.actorId,
+          name: h.actor?.name || h.actorName || 'Administrator',
+          role: h.actor?.role || h.actorRole || 'ADMIN'
+        },
+        timestamp: typeof h.timestamp === 'string' ? h.timestamp : new Date(h.timestamp).toISOString(),
+        note: h.note || undefined
+      })),
+      comments: []
+    };
+
+    return {
+      success: true,
+      complaint: formattedComplaint,
+      newHistory: json.newHistory
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Network error assigning technician.'
+    };
+  }
+}
+
+/**
+ * Server API: Fetch Facility Staff from Server
+ */
+export async function fetchStaffMembersFromServer(): Promise<{ success: boolean; data: StaffMember[]; error?: string }> {
+  try {
+    const res = await fetch('/api/staff');
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, data: [], error: json.error || 'Failed to fetch staff members.' };
+    }
+    return { success: true, data: json.staff || [] };
+  } catch (err: any) {
+    return { success: false, data: [], error: err.message || 'Error fetching staff.' };
+  }
+}
+
+/**
+ * Server API: Add Comment or Update Note to Complaint (Admin / Resident)
+ */
+export async function addAdminComplaintCommentOnServer(
+  complaintId: string,
+  note: string
+): Promise<{ success: boolean; complaint?: Complaint; newHistory?: ComplaintStatusHistory; error?: string }> {
+  try {
+    const token = getStoredToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`/api/admin/complaints/${complaintId}/comments`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ note })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error || 'Failed to add comment to complaint.'
       };
     }
 
@@ -678,7 +998,7 @@ export async function updateComplaintStatusOnServer(
   } catch (err: any) {
     return {
       success: false,
-      error: err.message || 'Network error updating complaint status.'
+      error: err.message || 'Network error adding comment.'
     };
   }
 }

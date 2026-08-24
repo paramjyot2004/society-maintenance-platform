@@ -9,10 +9,9 @@ import {
   Trees, 
   Home, 
   HelpCircle,
-  Clock,
   CheckCircle2,
-  PlayCircle,
-  AlertCircle
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import { ComplaintCategory, ComplaintPriority, ComplaintStatus } from '../types';
 
@@ -23,21 +22,21 @@ export const CategoryBadge: React.FC<{ category: ComplaintCategory; size?: 'sm' 
   const getCategoryConfig = (cat: ComplaintCategory) => {
     switch (cat) {
       case 'PLUMBING':
-        return { label: 'Plumbing', icon: Droplet, bg: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/60' };
+        return { label: 'Plumbing', icon: Droplet, bg: 'bg-sky-500/10 text-sky-400 border-sky-500/20' };
       case 'ELECTRICAL':
-        return { label: 'Electrical', icon: Zap, bg: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60' };
+        return { label: 'Electrical', icon: Zap, bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
       case 'ELEVATOR':
-        return { label: 'Elevator', icon: ArrowUpDown, bg: 'bg-teal-500/10 text-teal-400 border-teal-500/20 ' };
+        return { label: 'Elevator', icon: ArrowUpDown, bg: 'bg-teal-500/10 text-teal-400 border-teal-500/20' };
       case 'CARPENTRY':
-        return { label: 'Carpentry', icon: Hammer, bg: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/60' };
+        return { label: 'Carpentry', icon: Hammer, bg: 'bg-orange-500/10 text-orange-400 border-orange-500/20' };
       case 'SECURITY':
-        return { label: 'Security', icon: ShieldAlert, bg: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60' };
+        return { label: 'Security', icon: ShieldAlert, bg: 'bg-rose-500/10 text-rose-400 border-rose-500/20' };
       case 'SANITATION':
-        return { label: 'Sanitation', icon: Trash2, bg: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/60' };
+        return { label: 'Sanitation', icon: Trash2, bg: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' };
       case 'LANDSCAPING':
-        return { label: 'Gardening', icon: Trees, bg: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60' };
+        return { label: 'Gardening', icon: Trees, bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
       case 'CIVIL_WORK':
-        return { label: 'Civil Work', icon: Home, bg: 'bg-teal-500/10 text-teal-400 border-teal-500/20  dark:text-teal-300 ' };
+        return { label: 'Civil Work', icon: Home, bg: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' };
       default:
         return { label: 'General', icon: HelpCircle, bg: 'bg-[#1F2937] text-slate-300 border-[#374151]' };
     }
@@ -57,14 +56,15 @@ export const CategoryBadge: React.FC<{ category: ComplaintCategory; size?: 'sm' 
 export const PriorityBadge: React.FC<{ priority: ComplaintPriority }> = ({ priority }) => {
   switch (priority) {
     case 'HIGH':
+    case 'URGENT':
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
           High
         </span>
       );
     case 'MEDIUM':
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20">
           Medium
         </span>
       );
@@ -82,28 +82,35 @@ export const StatusBadge: React.FC<{ status: ComplaintStatus }> = ({ status }) =
   switch (status) {
     case 'OPEN':
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
           Open
         </span>
       );
     case 'IN_PROGRESS':
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
           In Progress
         </span>
       );
     case 'RESOLVED':
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60">
-          <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20">
+          <CheckCircle2 className="w-3 h-3 text-green-400" />
           Resolved
+        </span>
+      );
+    case 'CLOSED':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+          <Check className="w-3 h-3 text-purple-400" />
+          Closed
         </span>
       );
     default:
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-300 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#1F2937] text-slate-300 border border-[#374151]">
           <AlertCircle className="w-3 h-3 text-slate-500" />
           {status}
         </span>
