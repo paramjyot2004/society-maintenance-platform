@@ -1,8 +1,23 @@
 import { Request, Response } from 'express';
 import { getPrisma } from './db';
 import { AuthenticatedRequest } from './auth';
-import { NoticeCategory, NoticePriority } from '@prisma/client';
+import prismaPkg from '@prisma/client';
+import type { NoticeCategory as NoticeCategoryType, NoticePriority as NoticePriorityType } from '@prisma/client';
 import { sendImportantNoticeBroadcastEmail } from './email';
+
+const PrismaEnums = (prismaPkg as any).default || prismaPkg;
+const NoticeCategory: Record<string, string> = PrismaEnums.NoticeCategory || {
+  GENERAL: 'GENERAL',
+  MAINTENANCE: 'MAINTENANCE',
+  EMERGENCY: 'EMERGENCY',
+  EVENT: 'EVENT',
+  RULE: 'RULE'
+};
+const NoticePriority: Record<string, string> = PrismaEnums.NoticePriority || {
+  NORMAL: 'NORMAL',
+  URGENT: 'URGENT',
+  CRITICAL: 'CRITICAL'
+};
 
 export interface MemoryNotice {
   id: string;

@@ -1,6 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import prismaPkg from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
+
+const { PrismaClient } = (prismaPkg as any).default || prismaPkg;
+export type { PrismaClient } from '@prisma/client';
 
 let prismaClient: PrismaClient | null = null;
 let pgPool: pg.Pool | null = null;

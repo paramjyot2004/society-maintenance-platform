@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma, getPrisma } from './db';
 import { AuthenticatedRequest } from './auth';
-import { ComplaintCategory, ComplaintPriority, ComplaintStatus } from '@prisma/client';
+import type { ComplaintCategory, ComplaintPriority, ComplaintStatus } from '@prisma/client';
 import { sendComplaintStatusChangeEmail } from './email';
 
 // In-memory complaint store fallback when DATABASE_URL/Postgres is offline
