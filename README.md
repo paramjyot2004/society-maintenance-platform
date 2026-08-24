@@ -188,14 +188,6 @@ The admin dashboard provides society-wide complaint statistics and administrativ
 
 ---
 
-## 🎫 Admin Complaint Management
-
-Administrators can view resident complaints, inspect ticket details, manage priorities, update statuses, and review complaint history.
-
-![Admin Complaint Management](docs/screenshots/admin-complaints.png)
-
----
-
 ## 📢 Society Notices
 
 Residents can access important society announcements, maintenance updates, and community notices from a centralized notice board.
