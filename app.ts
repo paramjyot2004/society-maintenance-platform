@@ -2,7 +2,6 @@ import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
-import { createServer as createViteServer } from 'vite';
 import { Resend } from 'resend';
 import { 
   renderComplaintStatusEmail, 
@@ -491,6 +490,7 @@ app.post('/api/notifications/important-notice', async (req, res) => {
 // -------------------------------------------------------------
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
