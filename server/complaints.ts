@@ -1746,6 +1746,14 @@ export async function getAdminDashboardStatsHandler(req: AuthenticatedRequest, r
     const now = Date.now();
     const dbClient = getPrisma();
 
+    if (!dbClient) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database connection is not configured or unavailable.',
+        code: 'DATABASE_UNAVAILABLE'
+      });
+    }
+
     let complaintsList: Array<{
       id: string;
       ticketNumber: string;
@@ -1768,31 +1776,29 @@ export async function getAdminDashboardStatsHandler(req: AuthenticatedRequest, r
       } | null;
     }> = [];
 
-    if (dbClient) {
-      try {
-        complaintsList = await dbClient.complaint.findMany({
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                unitNumber: true,
-                tower: true
-              }
+    try {
+      complaintsList = await dbClient.complaint.findMany({
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              unitNumber: true,
+              tower: true
             }
-          },
-          orderBy: {
-            createdAt: 'desc'
           }
-        });
-      } catch (dbErr) {
-        console.warn('[DB] Prisma query in dashboard stats failed, using memory store:', dbErr);
-        complaintsList = [];
-      }
-    }
-
-    if (complaintsList.length === 0 && memoryComplaints.length > 0) {
-      complaintsList = [...memoryComplaints];
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+    } catch (dbErr: any) {
+      console.error('[DB] Prisma query in dashboard stats failed:', dbErr);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to query dashboard statistics from database: ' + (dbErr.message || 'Database error'),
+        code: 'DATABASE_ERROR'
+      });
     }
 
     const totalComplaints = complaintsList.length;

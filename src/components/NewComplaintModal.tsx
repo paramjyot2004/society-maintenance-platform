@@ -135,13 +135,19 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
         locationUnit: locationUnit.trim(),
         photoUrl: photoUrl.trim() || undefined
       });
-      if (res && res.ticketNumber) {
-        setSuccessTicket(res);
+
+      if (res && (res.success === true || res.ticketNumber) && res.success !== false) {
+        const ticket = res.data || res;
+        setSuccessTicket(ticket);
+        setErrorMessage(null);
       } else {
-        setSuccessTicket({ ticketNumber: 'Successfully Created' });
+        const apiError = res?.error || 'Failed to submit complaint to the server. Please try again.';
+        setErrorMessage(apiError);
+        setSuccessTicket(null);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to submit complaint. Please try again.');
+      setErrorMessage(err?.message || 'Failed to submit complaint. Please try again.');
+      setSuccessTicket(null);
     }
   };
 
@@ -151,7 +157,7 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
   if (successTicket) {
     return (
       <div className="fixed inset-0 z-50 bg-[#0B1121] flex flex-col animate-in fade-in">
-        <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <div className="border-b border-[#1F2937] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <span className="cursor-pointer hover:text-white" onClick={onClose}>Complaints</span>
             <span>&gt;</span>
@@ -163,15 +169,15 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
         </div>
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="bg-[#111827] border border-[#1F2937] p-8 rounded-2xl w-full max-w-md text-center">
-            <div className="w-16 h-16 bg-emerald-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-200">
+            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Complaint Submitted</h2>
             <p className="text-slate-400 text-sm mb-6">
               Your maintenance request has been successfully registered. The facility management team will review it shortly.
             </p>
-            {successTicket.ticketNumber !== 'Successfully Created' && (
-              <div className="bg-[#111827] border border-[#1F2937] rounded-xl p-4 mb-6">
+            {successTicket.ticketNumber && (
+              <div className="bg-[#0B1121] border border-[#1F2937] rounded-xl p-4 mb-6">
                 <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Ticket Reference</p>
                 <p className="text-lg text-teal-400 font-mono font-bold">{successTicket.ticketNumber}</p>
               </div>
@@ -189,7 +195,7 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
     <div className="fixed inset-0 z-50 bg-[#0B1121] flex flex-col animate-in fade-in overflow-y-auto">
       
       {/* Top Header */}
-      <div className="border-b border-slate-200 px-4 md:px-8 py-4 flex items-center justify-between shrink-0">
+      <div className="border-b border-[#1F2937] px-4 md:px-8 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 text-xs md:text-sm text-slate-400 font-medium">
           <span className="cursor-pointer hover:text-white transition-colors" onClick={onClose}>Complaints</span>
           <span>&gt;</span>
@@ -212,9 +218,12 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {errorMessage && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-400 text-sm px-4 py-3 rounded-xl flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 shrink-0" />
-                <p>{errorMessage}</p>
+              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm px-4 py-3.5 rounded-xl flex items-start gap-3 animate-in fade-in">
+                <AlertCircle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold text-white text-xs mb-0.5">Submission Error</p>
+                  <p className="text-xs text-rose-300 leading-relaxed">{errorMessage}</p>
+                </div>
               </div>
             )}
 

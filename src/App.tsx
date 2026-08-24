@@ -142,11 +142,8 @@ export default function App() {
   // Active view tab
   const [activeTab, setActiveTab] = useState<string>('complaints');
 
-  // Application Data State with LocalStorage caching
-  const [complaints, setComplaints] = useState<Complaint[]>(() => {
-    const saved = localStorage.getItem('oakwood_complaints');
-    return saved ? JSON.parse(saved) : INITIAL_COMPLAINTS;
-  });
+  // Application Data State - Complaints strictly loaded from server database
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
 
   const [notices, setNotices] = useState<Notice[]>(() => {
     const saved = localStorage.getItem('oakwood_notices');
@@ -189,10 +186,12 @@ export default function App() {
     }, 3500);
   };
 
-  // Sync to local storage
+  // Clean up any legacy mock complaints stored in localStorage
   useEffect(() => {
-    localStorage.setItem('oakwood_complaints', JSON.stringify(complaints));
-  }, [complaints]);
+    try {
+      localStorage.removeItem('oakwood_complaints');
+    } catch {}
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('oakwood_notices', JSON.stringify(notices));
@@ -202,22 +201,32 @@ export default function App() {
     localStorage.setItem('oakwood_bills', JSON.stringify(bills));
   }, [bills]);
 
-  // Fetch complaints from server for authenticated user session
+  // Fetch complaints from server for authenticated user session strictly from PostgreSQL
   useEffect(() => {
     if (isAuthenticated) {
       if (currentUser.role === 'ADMIN') {
         fetchAdminComplaintsFromServer().then(res => {
           if (res.success && res.data) {
             setComplaints(res.data);
+          } else {
+            setComplaints([]);
           }
-        }).catch(() => {});
+        }).catch(() => {
+          setComplaints([]);
+        });
       } else {
         fetchResidentComplaints().then(res => {
           if (res.success && res.data) {
             setComplaints(res.data);
+          } else {
+            setComplaints([]);
           }
-        }).catch(() => {});
+        }).catch(() => {
+          setComplaints([]);
+        });
       }
+    } else {
+      setComplaints([]);
     }
   }, [isAuthenticated, currentUser.id, currentUser.role, complaintsUpdatedTrigger]);
 
@@ -277,9 +286,10 @@ export default function App() {
     photoUrl?: string;
   }) => {
     if (!isAuthenticated) {
-      showToast('Please log in with your resident account to submit a complaint.');
+      const authError = 'Please log in with your resident account to submit a complaint.';
+      showToast(authError);
       setIsAuthModalOpen(true);
-      return null;
+      return { success: false, error: authError };
     }
 
     setIsSubmittingComplaint(true);
@@ -295,16 +305,17 @@ export default function App() {
       if (res.success && res.data) {
         setComplaints(prev => [res.data!, ...prev.filter(c => c.id !== res.data!.id)]);
         setComplaintsUpdatedTrigger(prev => prev + 1);
-        setIsNewComplaintOpen(false);
         showToast(`Complaint ${res.data.ticketNumber} filed successfully! Status: OPEN.`);
-        return res.data;
+        return { success: true, data: res.data, ticketNumber: res.data.ticketNumber };
       } else {
-        showToast(res.error || 'Failed to submit complaint to server.');
-        return null;
+        const errorMsg = res.error || 'Failed to submit complaint to server.';
+        showToast(errorMsg);
+        return { success: false, error: errorMsg };
       }
     } catch (err: any) {
-      showToast(`Error creating complaint: ${err?.message || 'Please try again.'}`);
-      return null;
+      const errorMsg = err?.message || 'Error creating complaint. Please try again.';
+      showToast(`Error creating complaint: ${errorMsg}`);
+      return { success: false, error: errorMsg };
     } finally {
       setIsSubmittingComplaint(false);
     }

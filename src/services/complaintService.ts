@@ -167,7 +167,7 @@ export async function fetchResidentComplaints(): Promise<{ success: boolean; dat
  * Submit a new resident complaint
  * Note: Never sends residentId/userId or status/priority; server assigns status=OPEN, priority=MEDIUM, actorId=authenticated resident
  */
-export async function createResidentComplaint(input: CreateComplaintInput): Promise<{ success: boolean; data?: Complaint; error?: string }> {
+export async function createResidentComplaint(input: CreateComplaintInput): Promise<{ success: boolean; data?: Complaint; error?: string; status?: number; code?: string }> {
   try {
     const token = getStoredToken();
     const headers: Record<string, string> = {
@@ -188,11 +188,27 @@ export async function createResidentComplaint(input: CreateComplaintInput): Prom
       })
     });
 
-    const data = await res.json();
+    let data: any = {};
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
+
     if (!res.ok || !data.success) {
+      const defaultError = res.status === 503
+        ? 'Database connection is not configured or unavailable. DATABASE_URL is required.'
+        : res.status === 401
+        ? 'Your session has expired. Please log in again.'
+        : res.status === 500
+        ? 'Internal server error while processing complaint.'
+        : `Server returned error (${res.status}).`;
+
       return {
         success: false,
-        error: data.error || 'Failed to submit complaint.'
+        error: data.error || defaultError,
+        status: res.status,
+        code: data.code
       };
     }
 

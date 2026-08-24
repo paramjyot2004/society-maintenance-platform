@@ -204,7 +204,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
 
     // Resolution rate
-    const resolutionRate = total > 0 ? Math.round((resolvedCount / total) * 100) : 100;
+    const resolutionRate = total > 0 ? Math.round((resolvedCount / total) * 100) : 0;
 
     // Urgent active complaints
     const urgentActiveCount = complaints.filter(
@@ -212,18 +212,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     ).length;
 
     // Average resolution time
-    const avgResolutionHours = resolvedWithDurationCount > 0 
+    const avgResolutionHours = total > 0 && resolvedWithDurationCount > 0 
       ? Math.round((totalResolutionHours / resolvedWithDurationCount) * 10) / 10 
-      : (serverStats?.summary?.avgResolutionHours || 0);
+      : 0;
 
     const avgResolutionDays = avgResolutionHours > 0 
       ? Math.round((avgResolutionHours / 24) * 10) / 10 
-      : (serverStats?.summary?.avgResolutionDays || 0);
+      : 0;
 
     // SLA Compliance rate
     const slaComplianceRate = total > 0 
       ? Math.round((compliantWithSlaCount / total) * 100) 
-      : (serverStats?.summary?.slaComplianceRate || 100);
+      : 100;
 
     // Priority counts
     const priorityCounts = {
